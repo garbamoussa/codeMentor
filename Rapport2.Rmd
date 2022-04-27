@@ -1,0 +1,318 @@
+---
+title: "Rapport2"
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+### Analyse de la conjoncture économique 
+
+## Banque  de France
+
+
+##  Performance des OPC
+La performance mensuelle des fonds non monétaires s’établit à 2,2% en mars (après 1,1% en février) tirée principalement par les
+fonds actions (+5,2%) et les fonds d’épargne salariale (+2,9%). La performance annuelle atteint quant à elle + 16,8 % en raison d’un important effet de base (baisse de valorisation de 103 milliards en mars 2020 suite au choc survenu sur les marchés financiers).
+
+### Analyse de performance des OPC
+
+Depuis son point bas en mars 2020 , la performance annuelle des fonds actions s’établit ainsi à 40,4% en mars 2021.
+La performance annuelle des fonds monétaires est stable à -0,43%. 
+
+```{r echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE}
+# Commande de réinitialisation
+
+
+#Nettoyage de graphiques 
+#if(!is.null(dev.list())) dev.off()
+
+# Nettoyage du console 
+cat("\014") 
+
+# Nettoyage de workplace
+rm(list = ls(all.names = TRUE))
+
+## nettoyage de mémoire 
+#gc()
+
+options(kableExtra_latex_packages=FALSE)
+library(RJDBC)
+library(DBI)
+library(pool)
+library(tidyverse)
+library(dbplyr)
+library(glue)
+library(kableExtra)
+library(tinytex)
+library(lubridate)
+library(plotly)
+library(formattable)
+library(webshot)
+
+library(scales)
+library(RColorBrewer)
+
+library(moments) # Pour faire d'élégants graphiques
+
+
+
+library(gglorenz) # Skewness et kurtosis
+
+
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+   
+
+```
+
+
+
+
+
+
+
+
+```{r echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE }
+#drv <- RJDBC::JDBC("org.postgresql.Driver","/home/opc2/users/i260103/postgresql-9.4.1212.jar")
+
+#con <- dbConnect(drv, url="jdbc:postgresql://opc2-opc2-rec.pgaas.bdf.dns.eclair.local:54320/opc2", user="opc2web", #password="1CnloVKjCjZartFWDyPmzdW7=")
+
+
+table_tbf1 <- read.csv("C:/Users/i260103/Downloads/tbf1_produit.csv", stringsAsFactors=FALSE)
+
+
+```
+
+
+#### A.1 Voici les 10 produits OPC ayant de meilleurs indicateurs le mois de Juin 2021
+
+
+```{r echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE}
+head(table_tbf1) %>%
+  kable(format = "latex")
+```
+
+
+```{r echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE}
+
+
+
+kable(head(table_tbf1), caption = "<center><strong>Tableau de part produit OPC2</strong></center>") %>%
+    kable_styling(bootstrap_options = "striped",full_width = F,  position = "left")%>%
+  footnote(general = "Commentaire général de la table",
+           number = c("note 1; ", "note 2; "),
+           alphabet = c("note A; ", "note B; "),
+           symbol = c("symbole 1; ", "symbole 2"),
+           title_format = c("italic", "underline"))
+
+
+```
+
+
+#### A.2 Analyse descriptive
+
+
+```{r Statistiques ,echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE}
+
+
+
+table_tbf1$CODE_LEI <- as.factor(table_tbf1$CODE_LEI)
+
+
+
+# Puis procéder à l'analyse
+
+{
+  
+mean <- mean(table_tbf1$MT_PE_ACT_NET)
+
+median <- median(table_tbf1$MT_PE_ACT_NET)
+
+mode <- getmode(table_tbf1$MT_PE_ACT_NET)
+
+min <- min(table_tbf1$MT_PE_ACT_NET)
+
+max <- max(table_tbf1$MT_PE_ACT_NET)
+
+Q1 <- quantile(table_tbf1$MT_PE_ACT_NET, 0.25)
+
+Q2 <- quantile(table_tbf1$MT_PE_ACT_NET, 0.5)
+
+Q3 <- quantile(table_tbf1$MT_PE_ACT_NET, 0.75)
+
+
+MT_PE_ACT_NET_descriptive <- data.frame(mean,
+                                  median,
+                                  mode,
+                                  min,
+                                  max
+                                  )
+
+}
+
+```
+
+
+
+```{r Statistiques descriptives,echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE}
+
+
+
+
+kable(MT_PE_ACT_NET_descriptive, caption = "<center><strong>Données de part produit</strong></center>") %>%
+    kable_styling(bootstrap_options = "striped",
+                full_width = F, 
+                 
+                
+                position = "left",
+                )
+
+{
+temp <- data.frame(seq(1,nrow(table_tbf1),1), 
+                   table_tbf1$MT_PE_ACT_NET)
+
+colnames(temp) <- c("index", "MT_PE_ACT_NET")
+
+ggplot(temp, aes(x = MT_PE_ACT_NET)) +
+  geom_density(aes(y = ..count..),
+               fill = "lightgrey") +
+  geom_boxplot(aes(y = 175), 
+               width = 50,
+               fill = "Steelblue",
+               outlier.size = 1,
+               outlier.colour = "red",
+               outlier.shape = 5) +
+  ggtitle("Analyse descriptive des MT_PE_ACT_NET") +
+  xlab("MT_PE_ACT_NET\n de part produit") +
+  ylab("Nombre\n de produits") +
+  theme_minimal() +
+  theme(axis.title.y = element_text(angle = 0,
+                                    vjust = 0.5),
+        plot.title = element_text(hjust = 0.5))
+}
+
+rm(mean, median, mode, min, max)
+
+  
+
+
+```
+
+
+
+
+
+
+```{r echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE}
+
+# Voici une boîte à moustache, par catégorie
+
+ggplot(table_tbf1, aes(x = POPULATION,
+                       y = MT_PE_ACT_NET,
+                       fill = POPULATION)) +
+  coord_flip() +
+  geom_boxplot(outlier.colour = "red",
+               notch = TRUE) +
+  scale_color_brewer(palette = "Blues") +
+  ggtitle("Analyse descriptive des montant, par POPULATION") +
+  xlab("MT_PE_ACT_NET") +
+  ylab("") +
+  labs(fill = "POPULATION") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(),
+        legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5))
+
+```
+
+
+
+
+
+```{r echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE}
+
+kable(head(table_tbf1), caption = "<center><strong>Données de part produit</strong></center>") %>%
+    kable_styling(bootstrap_options = "striped",
+                full_width = F, 
+                 
+                
+                position = "left",
+                )
+
+
+
+```
+
+
+
+
+
+
+
+```{r echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE}
+table_tbf1$DATE_MAJ <- as.Date(as.character(table_tbf1$DATE_MAJ), format = "%Y")
+table_tbf1$DATE_MAJ <- as.Date(as.character(table_tbf1$DATE_MAJ), format = "%Y")
+table_tbf1$PE_DATE_VL <- as.Date(as.character(table_tbf1$PE_DATE_VL), format = "%Y")
+```
+
+#### A.3 Répartition par CODE_TYPE_PRODUIT
+
+```{r echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE}
+data_1 <- table_tbf1 %>% select(CODE_TYPE_PRODUIT) %>%
+ group_by( CODE_TYPE_PRODUIT) %>%
+ summarize(count = sum(n()))%>%
+ arrange(desc(count))
+
+
+
+
+
+kable(head(data_1), caption = "<center><strong>Données de part produit</strong></center>") %>%
+    kable_styling(bootstrap_options = "striped",
+                full_width = F, 
+                
+                position = "left",
+                )
+ 
+
+ggplot(data_1, aes(reorder(CODE_TYPE_PRODUIT, (count)), count, fill = CODE_TYPE_PRODUIT))+
+ geom_bar(stat = 'identity')+
+ xlab(label = 'Nombre de type de produits')+
+ theme(axis.text.x = element_blank(), axis.ticks = element_blank())+
+ theme(legend.key.size = unit(x = 2, units = 'line'),
+       legend.text = element_text(size = 14),
+       legend.title = element_text(size = 15))
+```
+
+
+
+#### A.4 Répartition par CODE_PERIODICITE_VL
+
+```{r echo = FALSE, results = TRUE, message = FALSE, warning = FALSE, error = FALSE}
+
+data_1 <- table_tbf1 %>% select(CODE_PERIODICITE_VL) %>%
+ group_by( CODE_PERIODICITE_VL) %>%
+ summarize(count = sum(n()))%>%
+ arrange(desc(count))%>%
+ head(15)
+
+ggplot(data_1, aes(reorder(CODE_PERIODICITE_VL, (count)), count, fill = CODE_PERIODICITE_VL))+
+ geom_bar(stat = 'identity')+
+ xlab(label = 'Nombre de part produits par la périodicité VL')+
+ theme(axis.text.x = element_blank(), axis.ticks = element_blank())+
+ theme(legend.key.size = unit(x = 2, units = 'line'),
+       legend.text = element_text(size = 14),
+       legend.title = element_text(size = 15))
+```
+
+

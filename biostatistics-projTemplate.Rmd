@@ -1,0 +1,148 @@
+---
+title: "Project 2"
+author: "Sumedha Reddy Sudini"
+
+output: html_document
+---
+
+Instructions
+------------
+
+Please follow the instructions below to complete your assignment:
+
+1. Open the R markdown template **biostatistics-projTemplate.Rmd** in RStudio
+2. Insert the relevant information (i.e., assignment number, student name)
+3. Save the file as **projNUMBER-yourLastName.Rmd** replacing **NUMBER** with the assignment \#
+4. Your answers should consist of the R code used to generate the results and their interpretation
+5. Do not use any special symbols such as \%, \#, \$, and \& in your answers
+6. Generate an HTML version of the Markdown document by clicking on the **Knit** icon in RStudio
+7. Submit your RMD project file via the Turnitin link in the Assignment section of Blackboard and email
+    a copy of your RMD and HTML project files to your TA
+
+Problem 1
+---------
+### Question 1
+
+
+
+```{r}
+library(tidyverse)
+library(visdat)
+library(naniar)
+```
+
+```{r}
+ d1 <- read.csv(file = "http://faraway.neu.edu/biostats/assn2_dataset1.csv",
+    as.is = FALSE)
+```
+
+```{r}
+glimpse(d1)
+```
+
+
+```{r}
+d1 %>% map_df(~(data.frame(n_distinct = n_distinct(.x),
+                                  class = class(.x))),
+                     .id = "variable")
+```
+
+
+
+```{r}
+vis_dat(d1)
+```
+
+```{r}
+gg_miss_var(d1)
+```
+
+
+```{r}
+# Fill in this code wherever there is an XXXX
+d1.y2000 <- subset(d1, year == 2000)  # Extract data from years 2000
+d1.y2003 <- subset(d1, year == 2003)  # Extract data from years 2003
+# Find unique species
+unique.species <- unique(d1$speciesID)
+# Initialize results
+results <- matrix(nrow = unique(d1.y2000$speciesID), ncol = unique(d1.y2003$speciesID), NA)
+```
+
+
+```{r}
+results
+```
+
+
+
+```{r}
+# Compute the weighted mean of each species
+for (i in 1:length(unique.species)) {
+  
+  tmp1 <- subset(d1.y2000, speciesID == unique.species)
+  tmp2 <- subset(d1.y2003, speciesID == unique.species)
+  results[i, ] <- c(weighted.mean(tmp1$speciesName, tmp1$abundance), weighted.mean(tmp2$speciesName,
+        tmp2$abundance))
+
+}
+
+
+results <- data.frame(speciesID = unique.species, moveDist = XXXX)
+```
+
+
+
+```{r}
+#df$a[is.na(df$a)] <- df$b
+tmp1$abundance[is.na(tmp1$abundance)] <- tmp1$speciesName
+```
+
+
+```{r}
+pisco <- read.csv(file = "http://faraway.neu.edu/biostats/assn2_dataset1.csv")
+
+```
+
+There appears to be a clear latitudinal trend in Sea Surface Temperature along the West Coast of the US, with temperature decreasing with latitude.
+
+### Question 2
+
+```{r}
+library(maps)
+library(mapdata)
+```
+
+```{r}
+d1 <- subset(d1, !is.na(lon) & !is.na(lat))
+```
+
+
+
+```{r}
+rattlerdups=duplicated(d1[, c("lon", "lat")])
+d1 <-d1[!rattlerdups, ]
+```
+
+
+```{r}
+wrld_simpl <- data(wrld_simpl)
+plot(wrld_simpl, xlim=c(min(d1$lon)-1,max(d1$lon)+1), ylim=c(min(d1$lat)-1,max(d1$lat)+1), axes=TRUE, col="light yellow")
+points(d1$lon, d1$lat, col="orange", pch=20, cex=0.75)
+```
+
+```{r}
+map('worldHires', xlim=c(min(d1$lon)-1,max(d1$lon)+1), ylim=c(min(d1$lat)-1,max(d1$lat)+1), fill=TRUE, col="light yellow")
+points(d1$lon, d1$lat, col="orange", pch=20, cex=0.75)
+```
+
+
+
+```{r}
+library(maptools)
+rattlerocc=cbind.data.frame(d1$lon,d1$lat) #first, just make a data frame of latitudes and longitudes for the model
+fold <- kfold(rattlerocc, k=5) # add an index that makes five random groups of observations
+rattlertest <- rattlerocc[fold == 1, ] # hold out one fifth as test data
+rattlertrain <- rattlerocc[fold != 1, ] # the other four fifths are training data
+```
+
+There appears to be a clear latitudinal trend in primary production ([chl-a]) along the West Coast of the US, with chl-a increasing with latitude.

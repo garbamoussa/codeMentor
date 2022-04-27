@@ -1,0 +1,206 @@
+---
+
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Dictionary
+
+In this group project, you will work with analysts' forecast data of earning per share (EPS) provided by Wharton Research Data Services (WRDS). Institutional Brokers' Estimate System (I/B/E/S) provides historical data on certain financial indicators collected from thousands of individual analysts working in more than 3,000 broker houses. 
+
+- **Estimator**: Sell-side institution (mostly broker house). It is just the broker. 
+- **Analyst**: The person who makes the forecast and work for sell-side institution.
+
+Estimators and analysts are represented by codes to hide their real names. 
+
+- **TICKER**: A unique identifier assigned to each security. In this group project, you will only model "AAPL" ticker. 
+- **CNAME**: Company name
+
+- **FPI**: Forecast Period Indicator: The forecasting period.  6: Next Fiscal Quarter 1: Next Fiscal Year
+
+- **FPEDATS**: The Forecast Period End Date: It is the ending date of the fiscal period to which the estimate applies. For the majority of companies, the FPEDATS date is  December 31st of that year.
+
+- **ANNDATS**: The Announce date:  It is the date on which the analyst first made that particular estimate.
+
+- **ACTDATS**: The Activation date: It is the date when the analyst forecast became effective within the IBES database.
+
+- **REVDATS**: The Review Date: It is the most recent date on which IBES called the analyst and verified that particular estimate as still valid for that analyst. If an analyst confirms that a previous estimate is still valid, the original database record for that estimate is retained and only the REVDATS variable is updated. If an analyst changes their estimate for a given company, a new record is entered in the database with a new ANNDATS. The old record of the analyst (containing the previous estimate) is retained in the database.
+
+- **ANNDATS_ACT**: The Announced date of Actual EPS: The actual EPS value is announced by the company at this date.
+
+
+```{r }
+library(dplyr)
+IBES<-read.csv("/Users/garbamoussa/Downloads/IBES.csv", header=TRUE)
+head(IBES,n=1)
+
+```
+
+
+- **First row in IBES data set**: On 20‐Jan-95 (ANNDATS), analyst 7985 (ANALYS) at Estimator 206 (ESTIMATOR) predicts that the EPS (MEASURE) for Apple Computer (CNAME) with a ticker of AAPL (TICKER) with forecast period ending 31‐Mar-95 (FPEDATS) is\$0,0095 (VALUE). This estimates was entered into the database on 20‐Jan-95 (ACTDATS). On 20-Apr-95(ANNDATS_ACT), APPLE announced an actual EPS of $0.0053 (ACTUAL) for this quarter (FPI).  
+
+# Know your data
+
+- **Task 1**: Drop rows from IBES data set when a variable has a missing value.
+
+
+
+
+```{r }
+#Task 1 codes  in here
+summary (IBES)
+IBES=na.omit(IBES)
+summary (IBES)
+
+```
+
+- **Task 2**: Drop rows from IBES data set the quarterly forecasts (FPI=6)
+```{r }
+#Task 2 codes  in here
+IBES$FPI
+IBES_filtered <- IBES[IBES$FPI=="1",]
+na.omit(IBES_filtered)
+dim(IBES_filtered)
+
+```
+
+
+
+- **Task 3**: How many analyst provides forecasts for the fiscal year 2021 09-30? Write an R code which calculate that total number and name it **analysts_2021**.
+
+
+```{r }
+#Task 3 codes  in here
+
+#analysts_2021 <- IBES_filtered[IBES_filtered$FPEDATS == '20210930', ]
+#count (analysts_2021)
+
+analysts_2021 <- IBES%>%
+  group_by(FPEDATS == 20210930)%>%
+  summarise (count=n_distinct(ANALYS))
+
+```
+
+
+
+
+- **Task 4**: How many broker house (ESTIMATOR) provides forecasts for the fiscal year 2021 09-30? Write an R code which calculate that total number and name it **brokers_2021**.
+
+
+```{r }
+#Task 4 codes  in here
+
+#brokers_2021 <- analysts_2021[analysts_2021$ESTIMATOR == '' ]
+#count(brokers_2021)
+
+
+brokers_2021 <- IBES%>%
+  group_by(FPEDATS == 20210930)%>%
+  summarise (count=n_distinct(ESTIMATOR))
+```
+
+
+- **Task 5**: Which broker house (ESTIMATOR) has the highest number of analysts that provide forecasts for the fiscal year 2021 09-30? Write an R code which calculate that total number and name it **largebroker_2021**.
+
+
+```{r }
+#Task 5 codes  in here
+#largerbroker_2021 <- max(IBES_filtered$ESTIMATOR, IBES_filtered$FPEDATS == '20210930')
+#largerbroker_2021
+
+IBES_filtered1 <- subset(IBES_filtered, IBES_filtered["FPEDATS"] == "20210930")
+IBES_filtered1
+largebroker_2021 <- IBES_filtered1%>%
+  group_by(ESTIMATOR)%>%
+  summarise(count = length(ANALYS))%>%
+  arrange(desc(count))
+```
+
+
+
+
+#  Data filtering and Creation of new variables
+
+- **Task 6**: It is quite possible that an analyst makes multiple forecasts throughout the year for the same fiscal period. Remove observations from the data set if an analyst has multiple predictions for the same year and keep the last one. This step is crucial for successful execution of the following tasks.
+
+```{r }
+#Task 6 codes  in here
+
+#EXAMPLE ON _ https://www.marsja.se/how-to-remove-delete-row-in-r-with-na-with-conditions-duplicated/
+#dataf2 <- rbind(dataf, dataf[1,])
+#dataf2[!duplicated(dataf2), ]
+
+
+```
+
+
+- **Task 7**: **Previous period accuracy**: For each year, calculate the forecast performance of  each analyst from last year and name it as **past_accuracy**. In the calculation of forecast performance, you can use the MEASURE-ACTUAL as the forecast accuracy measure. 
+
+
+
+```{r }
+#Task 7 codes  in here
+
+```
+
+
+- **Task 8**: **Forecast Horizon**:  The longer the forecast horizon, the higher the uncertainty associated with EPS forecast. To control for this fact, create a new variable called **horizon** that captures the forecast horizon (ANNDATS_ACT- ANNDATS)  for each analyst.
+
+```{r }
+#Task 8 codes  in here
+
+```
+
+
+
+- **Task 9**: **Experience**: We assume that if an analyst is monitoring a company for a long period of time, he/she is expected to make more informed predictions. Create a new variable called **experience** that counts the cumulative number of years the analyst monitor (have predictions) the company. 
+
+
+```{r }
+#Task 9 codes  in here
+
+```
+
+
+ - **Task 10**: **Brokerage size**: If a brokerage house have many analysts making predictions for the same company, it can be a sign of more resources allocated for company analysis. Create a new variable called **size** that counts the total number of  analyst employed per year by the brokerage house (ESTIMATOR).
+ 
+```{r }
+#Task 10 codes  in here
+
+```
+
+ 
+## Modeling
+
+ - **Task 11**: **Benchmark Consensus forecast**: As a benchmark, take the average forecasts by all analysts as your best forecast of the EPS for that year and store your  forecast of APPL EPS (ACTUAL) for each year in a data frame named as **consensus_forecast**. 
+```{r }
+#Task 11 codes  in here
+
+```
+
+ 
+ - **Task 12**: **Linear Model**: Come up with a method that uses **past_accuracy**, **horizon**, **experience**, and  **size** as features to predict the EPS ( **ACTUAL**) with linear regression method. Store your  predictions in a data frame named as **OLS_forecast**. Explain your method briefly.
+
+```{r }
+#Task 12 codes  in here
+
+```
+
+ 
+  - **Task 13**: **Best Subset Model**: Come up with a method that uses any combination of  **past_accuracy**, **horizon**, **experience**, and  **size** as features to predict the EPS ( **ACTUAL**) with linear regression method. Store your  predictions in a data frame named as **best_subset_forecast**. Explain your method briefly.
+  
+```{r }
+#Task 13 codes  in here
+
+``` 
+  
+- **Task 14**: Write a short summary of your findings. In your summary report, also indicate which model does a great job to fit the data and why? 
+  
+  
+ 
+
+
+

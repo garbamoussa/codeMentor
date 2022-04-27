@@ -1,0 +1,368 @@
+---
+title: "coding"
+author: "GARBA Moussa"
+date: "10/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 
+
+```{r}
+library(caret)
+library(randomForest)
+library(raster)
+library(data.table)
+library(rgdal)
+library(RandomFields)
+library(geoR)
+library(maptools)
+library(splitTools)
+library(ranger)
+library(rpart.plot)
+library(ggplot2)
+library(rsq)
+library(plotrix)
+library(magick)
+library(ggpubr)
+library(sf)
+library(sp)
+library(stringi)
+library(Hmisc)
+library(tcltk)
+library(soiltexture)
+library(Metrics)
+library(ggplot2)
+library(dplyr)
+library(rfUtilities)
+library(data.table)
+
+```
+
+
+
+```{r}
+######################## Rasters as covariates into model
+relative.slope.position<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/RSP.tif" )
+flow.path<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/Flow Path Length.tif")
+LS<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/LS_Factor_2021.tif")
+landform<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/TPI_Based_Landform_Classification.tif" )
+saga.wetness.index<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/Saga Wetness Index.tif")
+slope.ht<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/Slope Height.tif")
+em<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/IDW_EM.tif")
+multi.scale<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/multiscaletpi.tif" )
+TPI.Based.landform.index<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/TPI_Based_Landform_Classification.tif")
+DEM<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/2012_DEM.tif")
+Topographic.position.index<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/Topographic Position Index 09721.tif")
+vtr<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/vector_terrain_ruggdness1.tif")
+tpi<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/topographic_position_index1.tif" )
+sa<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/surface_area.tif")
+extract.mask=raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/Principal.tif")
+Terrain<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/TerrainRuggdnessIndex.tif" )
+Local.Curve<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/LocalCurvature.tif")
+Upslope.curve<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/localupslopecurv.tif")
+downslope.curve<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/localdownslopecurv.tif")
+wetness<-raster("/Users/garbamoussa/OneDrive/R/RandomForest/Covariates/WIvalues.tif")
+```
+
+
+
+
+```{r}
+### import shapefile of the soil points on farm
+shp<-shapefile("/Users/garbamoussa/OneDrive/R/RandomForest/new_sixty_nine/new_sixty_nine.shp")
+plot(shp)
+
+#### stack rasters
+rasStack=stack(relative.slope.position,LS,flow.path, slope.ht, multi.scale,landform,saga.wetness.index,em,DEM,
+               extract.mask)
+plot(rasStack[[1]])
+points(shp)
+rasStack[[1]]
+
+##read point data and convert them into SPDF
+Pointcorrdinates = read.csv("/Users/garbamoussa/OneDrive/R/RandomForest/csv_files/10-40cm.A.For R.csv")
+
+print(head(Pointcorrdinates))
+print(Pointcorrdinates)
+
+```
+
+
+
+```{r}
+# this transforms the data.frame to a SpatialPointsDataFrame (i.e. a points shapefile)
+coordinates(Pointcorrdinates)= ~ lat+long
+points<-Pointcorrdinates
+head(points)
+
+##Extract raster value by points
+point.cov <- raster::extract(rasStack,points)
+head(point.cov)
+
+
+#### look at structure of pnt. coord. 
+str(Pointcorrdinates)
+crs(Pointcorrdinates)
+cor(point.cov)
+```
+
+
+```{r}
+####fresh data with lab/covaruate data w/ 69 pts
+lab.covar<- cbind(points,point.cov)
+head(lab.covar)
+
+##data for soil and covariates going into model 
+lab.clay <- lab.covar
+head(lab.clay)
+
+### 80/20 training script, using 80% here 
+set.seed(10123)
+intrain = sample(seq_len(nrow(lab.clay)), 0.8*nrow(lab.clay))
+train_data = lab.clay[intrain,]
+test_data = lab.clay[!seq_len(nrow(lab.clay)) %in% intrain,]
+```
+```{r}
+glimpse(lab.clay)
+```
+```{r}
+class(lab.clay)
+```
+
+
+
+```{r}
+# Multicolnearity analysis  
+
+data1 <- lab.clay@data[c("RSP","LS_Factor_2021", "Flow_Path_Length","Slope_Height","multiscaletpi","TPI_Based_Landform_Classification","Saga_Wetness_Index","X2012_DEM", "Principal")]
+
+
+
+
+# Identifier les variables numériques 
+numericData <- data1[sapply(data1, is.numeric)]
+
+#Calcul de la corrélation 
+descrCor <- cor(numericData, use="pairwise.complete.obs")
+#descrCor <-  max(descrCor,na.rm=TRUE)
+# Afficher la matrice de corrélation
+print(descrCor)
+```
+
+
+
+
+
+```{r}
+library(corrplot)
+# Visualize Correlation Matrix
+corrplot(descrCor, order = "FPC", method="number", type = "lower", tl.cex = 0.7, tl.col = rgb(0, 0, 0))
+``` 
+
+
+
+
+
+```{r}
+suppressPackageStartupMessages(library(caret))
+# Checking Variables that are highly correlated
+highlyCorrelated = findCorrelation(descrCor, cutoff=0.3)
+
+#Identifying Variable Names of Highly Correlated Variables
+highlyCorCol = colnames(numericData)[highlyCorrelated]
+
+#Print highly correlated attributes
+highlyCorCol
+
+
+
+```
+
+
+```{r}
+### random forest model 
+#rf=randomForest(lab.clay@data[c("RSP","LS_Factor_2021", "Flow_Path_Length","Slope_Height","multiscaletpi","TPI_Based_Landform_Classification","Saga_Wetness_Index","IDW_EM","X2012_DEM","vector_terrain_ruggdness1", "Principal","TerrainRuggdnessIndex","LocalCurvature","localupslopecurv","localdownslopecurv")], y=lab.clay@data$Sand, mtry=5,importance=TRUE, na.action = na.omit)
+
+rf=randomForest(lab.clay@data[c("LS_Factor_2021",  "Flow_Path_Length", "multiscaletpi", "Principal")], y=lab.clay@data$Sand, mtry=4,importance=TRUE, na.action = na.omit)
+```
+
+
+
+```{r}
+# we created the model above using 80% of the data, now we are going to run the other 20% of the data through a predction using the model
+test_predcition = predict(rf, test_data@data)
+
+# make a dataframe putting the real values next to the predicted ones
+dt = data.frame(RealValue = test_data@data$Sand, PredictedValue = test_predcition)
+
+#dt = data.frame(RealValue = lab.clay@data$Sand, PredictedValue = test_predcition)
+head(dt)
+
+####### prediction 
+rfpred<-predict(rasStack, rf, type="response", index=1, na.rm=TRUE, progress="window")
+
+###with box and coordinates map of prediction 
+
+plot(rfpred, main="Sand Random Forest Image Prediction 10-40 cm")
+
+
+```
+
+
+
+```{r}
+
+#### ggplot and plotting the sample sizes 
+
+rmse_list<-c()
+r2_list<-c()
+num_points <- c()
+all_data <- rbind(lab.clay@data, test_data@data)
+for (i in seq(5,nrow(all_data),5)){
+  set.seed(200)
+  sample_index <- sample(seq_len(nrow(all_data)), size = i )
+  train_sample <- all_data[sample_index,]
+  #trainy_sample <- train_data@data$Clay[sample_index]
+  #test_sample <- dplyr::select(test_data@data, -Clay)
+  
+  #This is leave-one-out cross validation as the n-fold = i
+  
+  cv = trainControl(method = "cv", number = i-1)
+  rf.model = caret::train(Clay~., data = train_sample, method = "rf", trControl = cv)
+  rmse_list <-c(rmse_list, rf.model$results$RMSE)
+  r2_list <- c(r2_list,   rf.model$results$Rsquared)
+  num_points <- c(num_points, rep(i,3)) 
+}
+
+
+model_summary.1 <- data.frame(sample_size = num_points, r2 = r2_list, rmse = rmse_list)
+
+
+model_summary.1 %>% ggplot(aes(x = factor(sample_size), y=r2, fill = sample_size
+)) + geom_violin() +
+  labs(title = "R2 by sample size", x = "sample size",
+       y = "R_squared")
+
+model_summary.1 %>% ggplot(aes(factor(sample_size), y=rmse, fill = sample_size)) + geom_violin(trim=F, scale = "width")+
+  geom_boxplot(width = 0.3)+
+  labs(title = "RMSE by sample size", x = "sample size",
+       y = "RMSE")
+model_summary.1 %>% ggplot(aes(factor(sample_size), y=rmse, fill = sample_size)) + geom_violin()+
+  labs(title = "RMSE by sample size", x = "sample size",
+       y = "RMSE")
+##final model
+set.seed(200)
+sample_index <- sample(seq_len(nrow(lab.clay@data)), size = 35 )
+trainx_sample <- dplyr::select(lab.clay@data[sample_index,])
+trainy_sample <- lab.clay@data$Clay[sample_index]
+test_sample <- dplyr::select(test_data@data)
+rf.final_model=randomForest(trainx_sample, trainy_sample, importance=TRUE, na.action = na.omit)
+final_predictions <- predict(rf.final_model, newdata =  test_sample)
+```
+
+
+
+
+```{r}
+rmse_list<-list()
+test.list<-list()
+r2_list<-list()
+full_rmse_list<-list()
+
+for (i in seq(10,nrow(lab.clay@data),5)){
+  print(i)
+}
+
+
+for (i in c(seq(10,nrow(lab.clay@data),5),50)){
+  predictions<-c()
+  observations<-c()
+  for (n in c(1:3))
+  {
+    
+    
+    set.seed(200+n)
+    sample_index <- sample(seq_len(nrow(lab.clay@data)), size = i )
+    trainx_sample <- dplyr::select(lab.clay@data[sample_index,], -c(Sand,Silt,Clay))
+    trainy_sample <- lab.clay@data$Clay[sample_index]
+    #test_sample <- dplyr::select(test_data@data, -Clay)
+    #rf=randomForest(x=train_sample, y=train_data@data$Sand, replace=FALSE,importance=TRUE, na.action = na.omit)
+    #rf.cv <-rfcv(trainx_sample, trainy_sample, cv.fold = i)
+    
+    
+    #This is leave-one-out cross validation loop
+    for (k in 1:i){
+      rf.model=randomForest(trainx_sample[-k,], trainy_sample[-k], importance=TRUE, na.action = na.omit)
+      
+      # result = rf.crossValidation(rf.model, trainx_sample, n = i, normalize = TRUE, p = 0.1)
+      predictions <- predict(rf.model, newdata =  trainx_sample[k ,])
+      observations=trainy_sample[k]
+      test.list[[k]]<-c(predictions, observations,i)
+      
+      testlistdf <- as.data.frame(matrix(unlist(test.list), ncol=3, byrow=T))
+      rmse.sample=rmse(testlistdf$V1,testlistdf$V2)
+      r2.sample=cor(testlistdf$V1,testlistdf$V2)^2
+    }
+    
+    rmse_list[[n]]<-c(rmse.sample, r2.sample,i)
+  }
+  full_rmse_list[[i]] <- rmse_list
+}
+rmse_df <- lapply(rmse_list, function(x){
+  df <- data.frame(rmse = x[1],
+                   r2  = x[2],
+                   sample_size = x[3])
+  return(df)
+})
+rmse.sample
+r2.sample
+
+
+class(rmse_list[[1]])
+###function that applies the on the elements of the list to the right . rbind to all the elememnts of rmse_list***
+do.call(rbind, rmse_df)
+
+##ggplot 
+
+
+# Remove zero elements
+non_zero_rmse_list <- full_rmse_list[lengths(full_rmse_list) != 0]
+
+# Gather dfs from inside the list
+rmse_list_dfs <- list()
+for(i in 1:12){
+  x <- lapply(non_zero_rmse_list[[i]], function(x){
+    df <- data.frame(rmse = x[1],
+                     r2  = x[2],
+                     sample_size = round(x[3]))
+    return(df)
+  })
+  rmse_list_dfs[[i]] <- do.call(rbind, x)
+}
+# Bind all together
+df_rmse <- do.call(rbind, rmse_list_dfs)
+
+# Set sample size as factor
+
+df_rmse$sample_size <- as.factor(df_rmse$sample_size)
+
+# Build ggplot
+df_rmse %>% ggplot(aes(sample_size, r2)) +
+  geom_violin(aes(fill = sample_size, alpha = 0.5), show.legend = F)+ 
+  ggtitle("10-40 cm clay")+
+  theme_bw()
+df_rmse %>% ggplot(aes(sample_size, rmse)) +
+  geom_violin(aes(fill = sample_size, alpha = 0.5), show.legend = F)+ 
+  ggtitle("10-40 cm clay")+
+  theme(axis.title = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        plot.title = element_text(size = 30)) +
+  theme_bw()
+
+
+```
+
