@@ -1,0 +1,567 @@
+---
+title: "DS705 Advanced Modeling Tools Homework"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load packages 
+
+```{r, message=FALSE}
+library(tidyverse)
+library(broom)
+library(car)
+```
+
+## How to complete the homework.
+
+If you've made it this far, then you've already downloaded and unzipped the HW packet for this week.  We suggest that you keep all of the materials, including this .rmd file,  for the week in one folder.  It will help to set the working directory to the folder that contains the HW materials.  You can do this by opening the rmd file in an RStudio editor window and then using the menu commands Session -> Set Working Directory -> To Source File Location.
+
+You are free to add R code and type answers in the designated spaces throughout this document.  At the end of the week, you'll input your answers to the Canvas quiz associated with this homework.  
+
+## Exercise 1
+
+The Long Term Resource Monitoring (LTRM) project has been conducting research and monitoring on the Upper Mississippi River System since 1986. 
+
+Here is a bit about the LTRM from their website:
+"Fishes of the Upper Mississippi River System have recreational and commercial value, conservation potential, and can be used to assess the ecological integrity of the aquatic ecosystem. 
+
+The objective of the standardized monitoring is to quantify the status and trends of fish populations and communities and identify relations with various other ecological attributes. The findings can be used to address fisheries management concerns.
+
+The Long Term Resource Monitoring element uses a multigear and multihabitat sampling design to collect fish data in six study pools/reaches."
+
+The file fish_data.rda is available in the homework download packet and in the DS705data package. It contains length and weight measurements for a sample of 50 fish of four difference species of interest: BHMW = Bullhead minnow, BKCP = Black crappie, BLGL = Bluegill, BWFN = Bowfin. Additionally, the file includes the date that the fish was observed.
+
+### Question 1
+
+It is standard practice to plot and model the relationship between fish weight and length using a logarithm transformation on both variables. To see the reason for the use of these transformations, we are going to start by fitting a model without any transformation.
+
+Fit a model for predicting weight based on length and species. Include the length by species interaction term. Create and inspect the 4-pack of model diagnostic plots.
+
+What conditions fail based on the 4-pack of plots? Select all that apply.
+
+### Answer 1
+
+  - L = Linear  
+  - I = Independent errors
+  
+  - E = Equal variance of errors    
+
+
+```{r, message=FALSE}
+load("fish_data.rda")
+
+glimpse(fish_data)
+
+```
+
+```{r}
+fish_data <-  fish_data %>% na.omit()
+
+plot(fish_data$length, fish_data$weight,
+     main='Length Vs Weight',
+     xlab='Length', ylab='Weight')
+
+abline(lm(weight ~ length + fishcode,data=fish_data),col='red')
+
+```
+
+
+
+```{r}
+summary(lm(weight ~ length + fishcode,data=fish_data))
+```
+
+
+
+```{r}
+par(mfrow=c(2,2)) 
+plot(lm(weight ~ length +fishcode,data=fish_data))
+par(mfrow=c(1,1)) 
+
+```
+
+
+
+-----------------------
+
+### Question 2
+
+Refit the model from question 1 with a log-transformation applied to both weight and length. Include the log(length) by species interaction term. Again, inspect the diagnostic plots. Call this model fit MOD_interact as we will refer to it later.
+
+Have model conditions improved in comparison to the model based on non-transformed data?
+
+### Answer 2
+
+Options:
+  
+  - Yes, there is improvement but there are still some concerns with normality and outliers  
+ 
+  
+```{r}
+fish_data <-  fish_data %>% mutate(log_length = log(length), log_weight = log(weight) )
+glimpse(fish_data)
+```
+
+
+```{r}
+
+
+plot(fish_data$log_length, fish_data$log_weight,
+     main='Log Length Vs Log Weight',
+     xlab='Length', ylab='Weight')
+
+abline(lm(log_weight ~ log_length + fishcode,data=fish_data),col='red')
+
+
+```
+
+```{r}
+MOD_interact   <- lm(log_weight ~ log_length + fishcode,data=fish_data)
+```
+
+
+```{r}
+par(mfrow=c(2,2)) 
+plot(MOD_interact)
+par(mfrow=c(1,1)) 
+
+```
+
+-----------------------
+
+### Question 3
+
+Extract the residuals from your fit model using the residuals() function. Create a scatter plot of your model residuals (y) over time (x=fdate) to assess the assumed independence of model errors. Distinct patterns in the residuals over time (e.g. residuals trending upward over time)  suggest a violation of the assumption of independent errors in linear regression. Do you see any clear patterns in your plot of the residuals over time? 
+
+### Answer 3
+
+
+ 
+  - No    
+
+
+```{r}
+# Here is possible code for computing model residuals and mutating them onto the fish_data
+fish_data = fish_data %>% mutate(resids = residuals(lm(log_weight ~ log_length +fishcode,data=fish_data)))
+library(ggplot2)
+ggplot(fish_data, aes(x = fdate, y = resids)) +
+    geom_point()
+
+
+```
+The model is decent, but could be better. There are some outliers that negatively effect the residuals.
+
+```{r}
+## Residual analysis for assumptions (independence, linearity, normality, and homoscedasticity)
+layout(matrix(1:6, byrow = T, ncol = 3))
+plot(MOD_interact, which = 1:6)
+```
+
+
+```{r}
+library(fpp2)
+
+checkresiduals(fish_data$resids)
+```
+
+-----------------------
+
+### Question 4
+
+Make a plot that visualizes the interaction: weight on the y-axis (log-scale), length on the x-axis (log-scale), and fishcode showing the categorical predictor variable with a separate line fit for each category. You can do this with geom_abline or with geom_smooth with color/group set in the aes.
+
+What best describes the nature of this interaction?
+
+### Answer 4
+
+
+ 
+  - The slope for BWFN is slightly shallower than for the other 3 species (interaction present)  
+
+```{r, message=FALSE}
+#unique(fish_data$fishcode)
+
+ggplot(fish_data, aes(log_length, log_weight, colour = fishcode)) + 
+  geom_smooth()
+```
+
+
+-----------------------
+
+### Question 5
+
+Fit the model with no interaction term. Call this model MOD_additive.
+
+Based on AIC values, which model is better? 
+
+### Answer 5
+
+   
+  - MOD_interact   
+  
+  
+
+```{r}
+MOD_additive <- lm(log_weight ~ log_length,  data=fish_data)
+summary(MOD_additive)
+```
+
+
+```{r}
+AIC(MOD_additive)
+```
+
+```{r}
+AIC(MOD_interact)
+```
+The basic idea of AIC is to penalize the inclusion of additional variables to a model. It adds a penalty that increases the error when including additional terms. The lower the AIC, the better the model.
+
+-----------------------
+
+### Question 6
+
+Based on adjusted $R^2$ values, which model is better? 
+
+### Answer 6
+
+  
+  - Essentially no difference between the two models (adjusted R2 is identical to 3 decimal places)
+
+
+
+```{r}
+summary(MOD_interact)
+```
+
+
+```{r}
+summary(MOD_additive)
+```
+
+-----------------------
+
+### Question 7
+
+Carry out a comparative ANOVA test H0: MOD_additive versus H1: MOD_interact. What is the associated p-value?
+
+### Answer 7
+
+p-value = 0.00000000000000022        
+
+```{r}
+anova(MOD_interact,MOD_additive,test="Chisq")
+
+```
+
+-----------------------
+
+### Question 8
+
+Using the interaction model, what is the predicted weight of a blue gill (BLGL) with a length of 100? Be mindful of the log transformation that the model has applied to length and weight.
+
+### Answer 8
+
+Predicted weight =     1.082296 
+
+
+```{r}
+
+log(predict(MOD_interact, newdata=data.frame(log_length =c(log(100)), fishcode =c("BLGL")), type="response"))
+```
+
+
+
+-----------------------
+
+
+## Exercise 2
+
+For this exercise, we are going to look at salaries for college teachers and how they relate to age, gender, and highest degree completed. We have access to a random sample of college teachers taken from the 2010 American Community Survey (ACS) 1-year Public Use Microdata Sample (PUMS). The file **salary_gender.csv** in the HW download packet contains 100 observations on the following 4 variables.
+
+  - Salary: Annual salary in $1,000’s 
+  - Gender 0=female or 1=male
+  - Age Age in years
+  - PhD 1=have PhD or 0=no PhD
+
+Read in the associated data file and convert Gender and PhD to be factors.
+
+```{r, message=FALSE}
+salary_gender = read_csv("salary_gender.csv")
+salary_gender = salary_gender %>% mutate(Gender = factor(Gender), PhD = factor(PhD))
+glimpse(salary_gender)
+```
+
+
+
+### Question 9
+
+Begin by fitting a linear model that uses Salary as the response variable and Age, Gender, PhD, and all associated two-term interactions as predictor variables. Plot the diagnostic 4-pack to assess the model conditions.
+
+```{r}
+model_salary <-  lm(Salary ~ Age + Gender + PhD + Age*Gender + Age*PhD + Gender*PhD,  data=salary_gender)
+
+par(mfrow=c(2,2)) 
+plot(model_salary)
+par(mfrow=c(1,1)) 
+```
+
+Based on the plot of residuals versus fitted values (1st plot in the 4-pack), what best describes the pattern of residual variance associated with this model:
+
+### Answer 9
+
+  
+ 
+  
+  - The variance of the residuals increases as fitted values increase 
+  
+
+-----------------------
+
+### Question 10
+
+When model conditions fall short, we have found that the use of transformations can help to correct these short-comings. The boxCox function from the car package (Companion for Applied Regression) is one of many tools that may be used to help find a suitable transformation for the response variable in a linear model. To use this function, simply type boxCox(my.model) where my.model is a linear model object. The results will be a plot of possible power transformations (lambda) on the x-axis and corresponding log-likelihood values on the y-axis. The idea of the Box-Cox method is to select a value of $\lambda$ that maximizes the log-likelihood.  Vertical dashed lines on the plot highlight a window of plausible $\lambda$ values.
+
+Apply the boxCox function to the model that you fit for question 8. What transformation for Salary is suggested by the Box-Cox method?
+
+```{r}
+library(car)
+boxCox( model_salary )
+```
+
+
+
+```{r}
+boxCox(model_salary, lambda = seq(-2,2))
+```
+The 95% confidence interval of lambda is between about 0.3 and 0.6
+
+We can calculate the exact value
+
+```{r}
+bc<-boxCox(model_salary)
+```
+
+```{r}
+bc$x[which(bc$y==max(bc$y))]
+```
+
+
+```{r}
+fullmodel.bc <- lm((Salary)^-0.424~Age + Gender + PhD + Age*Gender + Age*PhD + Gender*PhD,  data=salary_gender)
+plot(fullmodel.bc)
+
+
+
+```
+
+```{r}
+fullmodel.sqrt <- lm(sqrt(Salary)~Age + Gender + PhD + Age*Gender + Age*PhD + Gender*PhD,  data=salary_gender)
+plot(fullmodel.sqrt)
+```
+
+
+
+### Answer 10
+
+  
+  - $\lambda=1/2$ or sqrt(Salary)   
+  
+
+-----------------------
+
+### Question 11
+
+Fit a model with the power transformation suggested by the boxCox function (your response to question 10) applied to Salary. Keep the same set of predictor variables as in question 9; Age, Gender, PhD and all possible two-term interactions. Plot the diagnostic 4-pack to assess the model conditions.
+
+```{r}
+par(mfrow=c(2,2)) 
+plot(lm(log(Salary) ~ Age + Gender + PhD + Age*Gender + Age*PhD + Gender*PhD,  data=salary_gender))
+par(mfrow=c(1,1)) 
+```
+
+Has the equal variance condition improved on the transformed Salary when compared to the original Salary scale?
+
+### Answer 11
+
+
+Yes 
+
+
+
+
+-----------------------
+
+### Question 12
+
+Use Lasso with cross-validation to fit a model with same response variable (transformed Salary) and potential predictor variables (Age, Gender, PhD and all possible two-term interactions) as used in question 11. Use the full data set for this.
+
+Using the lambda value that gives the minimum mean cross-validated error (lambda.min), select all model terms have non-zero coefficients in the Lasso model.
+
+### Answer 12
+
+Age   
+Gender1
+PhD1    
+Age:Gender1
+Age:PhD1
+Gender1:PhD1
+
+   
+
+
+
+```{r}
+library(glmnet)
+x = model.matrix(Salary~., salary_gender)[,-1] 
+y = salary_gender %>%
+  select(Salary) %>%
+  unlist() %>%
+  as.numeric()
+grid = 10^seq(10, -2, length = 100)
+lasso_mod = glmnet(x, 
+                   y, 
+                   alpha = 1, 
+                   lambda = grid) 
+
+
+
+set.seed(1)
+cv.out <-  cv.glmnet(x, y, alpha = 1) 
+
+bestlam <-  cv.out$lambda.min 
+bestlam
+
+```
+
+
+```{r}
+#lasso_mod$lambda
+
+coef(cv.out, cv.out$lambda.min)
+```
+
+
+-----------------------
+
+### Question 13
+
+Here are a few interpretation sentences based on the Lasso model fit. 
+
+  - Assuming that age is fixed, the expected gap in college teacher salary between a female with a PhD and a female without a PhD is \$1.69 thousand. 
+
+  - Still assuming that age is fixed, the expected gap in salary between a male with PhD and a male without a PhD is \$(1.69 + .28) thousand or approximately \$2 thousand.
+
+ - For each additional year of age, we expect that college teacher salary will increase on average by $30 with gender and PhD status held constant.
+
+There is a **major** error that is common to all three of these interpretation sentences. Explain what is incorrect about all of these statements. (This is an open response question so it will not be auto-graded by Canvas.)
+
+### Answer 13
+
+Type your explanation in Canvas quiz
+LASSO (a penalized estimation method) aims at estimating the same quantities (model coefficients) as, say, OLS maximum likelihood (an unpenalized method). The model is the same, and the interpretation remains the same. The numerical values from LASSO will normally differ from those from OLS maximum likelihood: some will be closer to zero, others will be exactly zero. If a sensible amount of penalization has been applied, the LASSO estimates will lie closer to the true values than the OLS maximum likelihood estimates, which is a desirable result.
+
+There is no inherent problem with that, but you could use LASSO not only for feature selection but also for coefficient estimation. As I mention above, LASSO estimates may be more accurate than, say, OLS maximum likelihood estimates.
+
+
+-----------------------
+
+### Question 14
+
+We now want to apply step-wise model selection algorithms (forward, backward, and both) for this context of predicting Salary based on Age, Gender, and PhD. We will use the transformed Salary as our response variable. We will look for an optimal model between the simple intercept-only model (Y~1) and the full model that uses the predictor variables from question 10 (Age, Gender, PhD and all possible two-term interactions). Use the step function three times: once with direction = "backward", once with direction = "forward", and once with direction = "both". You should find that all three algorithms land on the same final model.  What terms are included in the model selected by step?
+
+
+### Answer 14
+
+Age  
+Gender1
+PhD1   
+Age:Gender1
+Age:PhD1
+Gender1:PhD1    
+
+
+```{r}
+step(lm(log(Salary) ~ Age + Gender + PhD ,  data=salary_gender),direction="backward")
+
+```
+
+
+```{r}
+step(lm(log(Salary) ~ Age + Gender + PhD ,  data=salary_gender),direction="forward")
+
+```
+
+
+```{r}
+step(lm(log(Salary) ~ Age + Gender + PhD ,  data=salary_gender),direction="both")
+
+```
+
+
+
+```{r}
+step(model_salary,direction="backward")
+
+
+```
+
+
+
+
+
+
+```{r}
+step(model_salary,direction="forward")
+
+
+```
+
+
+```{r}
+step(model_salary,direction="both")
+
+
+```
+
+
+
+-----------------------
+
+### Question 15
+
+This example is interesting and to some degree incomplete. The question of whether or not Gender is associated with notable differences in Salary is very relevant. The model settled on using Lasso included a term connected to Gender. The model that the step function led us to did not include a term related to Gender. If you try splitting the data into training/test sets, you will find that the choice of terms for the trained model will vary between random splits, confusing the story to an even greater degree. This is a place where visualizations, descriptive statistics, along with statistical models could work together to tell a more complete story.
+
+Make a scatter plot that displays Salary on the y-axis, Age on the x-axis, uses different colors for Gender, and facets by PhD (facet_wrap). Additionally, use geom_smooth with method="lm" to overlay trend lines for each PhD by Gender combination.
+
+Which one subgroup has a negatively sloping trend line on your plot?
+
+### Answer 15
+
+   
+  - Women with a PhD   
+  
+
+
+```{r, message=FALSE}
+ggplot(salary_gender, aes(Age, Salary,  colour = Gender)) +
+  geom_smooth(method="lm") +
+  facet_wrap(vars(PhD), scales = "free")
+```
+
+
+
+
+
+
+
+
+
+
+
