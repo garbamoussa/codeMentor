@@ -1,0 +1,462 @@
+---
+title: "Assignement9"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##
+
+```{r}
+#getinfo.shape("/Users/garbamoussa/Downloads/Assignment 9/Data/PS6_data/Diseased.shp")
+
+library(raster)
+library(raster)
+library(spatstat)
+library(maptools)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+
+
+
+
+library(cowplot)
+
+library(splancs)
+library(cubature)
+```
+
+
+```{r}
+
+d <- shapefile("/Users/garbamoussa/Downloads/Assignment 9/Data/PS6_data/Diseased.shp")
+h <- shapefile("/Users/garbamoussa/Downloads/Assignment 9/Data/PS6_data/Healthy.shp")
+d.unmarked <- unmark(as.ppp(d))
+h.unmarked <- unmark(as.ppp(h))
+
+```
+# Plotting the point pattern
+```{r}
+
+plot1 <- ggplot(as.data.frame(d.unmarked), aes(x = x, y = y)) + geom_point() + ggtitle("d.unmarked")
+plot2 <- ggplot(as.data.frame(h.unmarked), aes(x = x, y = y)) + geom_point() + ggtitle("h.unmarked")
+
+
+grid.arrange(plot1, plot2, ncol=2, nrow=1)
+```
+
+```{r}
+summary(h.unmarked)
+```
+```{r}
+attributes(h.unmarked)
+```
+
+
+```{r}
+summary(d.unmarked)
+```
+
+## 1.	Fit a point process model of a stationary Poisson process to each point pattern. What is the intensity of each point pattern? (2 points)
+
+
+
+
+
+
+
+```{r}
+ppm(h.unmarked)
+```
+
+
+
+```{r}
+ #fit the stationary Poisson process to point pattern 'h.unmarked'
+
+ Qh <- quadscheme(h.unmarked) 
+ ppm(Qh) 
+```
+
+
+
+```{r}
+fit_h <- ppm(h.unmarked, ~ x)
+fit_h
+```
+
+
+
+```{r}
+# spatstat predictions
+pred_h <- predict(fit_h)
+class(pred_h)
+plot(pred_h)
+```
+
+
+```{r}
+#fit the stationary Poisson process to point pattern 'd.unmarked'
+
+ Qd <- quadscheme(d.unmarked) 
+ ppm(Qd) 
+```
+
+# Evaluating Complete Spatial Randomness  CSR using the G-Function
+```{r}
+## envelope: Simulation Envelopes of Summary Function and G-Function Function that computes the desired summary statistic for a point pattern.
+set.seed(120109)
+r <- seq(0, sqrt(2)/6, by = 0.005)
+Gest_D_unmarked <- envelope(d.unmarked, fun = Gest, r = r, nrank = 2, nsim = 99, correction = "border")
+Gest_H_unmarked <- envelope(h.unmarked, fun = Gest, r = r, nrank = 2, nsim = 99, correction = "border")
+
+```
+
+```{r}
+plot(Gest_D_unmarked)
+```
+
+
+
+
+```{r}
+plot(Gest_H_unmarked)
+```
+### Evaluating CSR using the F-Function 
+```{r}
+
+set.seed(120109)
+r <- seq(0, sqrt(2)/6, by = 0.001)
+Fest_H_unmarked <- envelope(h.unmarked, fun = Fest, r = r, nrank = 2, nsim = 99, correction = "border")
+Fest_D_unmarked <- envelope(d.unmarked, fun = Fest, r = r, nrank = 2, nsim = 99,correction = "border")
+```
+
+```{r}
+plot(Fest_H_unmarked)
+```
+
+```{r}
+plot(Fest_D_unmarked)
+```
+
+This plot shows the range of values obtained via simulation as a grey envelope. The observed k-function is much higher than the values obtained via simulation of CSR. This implies clustering, at all distances there are more points near each point than expected under CSR.
+
+A black line inside of the grey envelope implies no significant difference from CSR. One cool thing about the K-function is that results can be scale specific. As scale varies a point pattern can contain no pattern, clustering, or dispersion. A map can be clustered at some scales but dispersed at others.
+
+Another important thing to remember is that in the above simulation the envelope represents a homogeneous Poisson process. However, most interesting questions involve point pattern where CSR is not realistic, we need some new methods…
+
+
+
+
+
+
+Assess  point pattern to identify whether it is a Homogenous or Inhomogenous Poisson Process and selecting the optimal bandwidth for the h.unmarked dataset
+```{r}
+
+mserwq <- mse2d(as.points(coordinates(as.data.frame(h.unmarked))), as.points(list(x = c(0, + 1, 1, 0), y = c(0, 0, 1, 1))), 100, 0.15)
+bwq <- mserwq$h[which.min(mserwq$mse)]
+bwq
+```
+
+
+
+```{r}
+mserw <- bw.diggle(h.unmarked)
+bw <- as.numeric(mserw)
+bw
+```
+
+## Kernel smoothing using a quartic kernel
+
+```{r}
+
+poly <- as.points(list(x = c(0, 0, 1, 1), y = c(0, 1, 1, 0)))
+sG <- Sobj_SpatialGrid(as.SpatialPoints.ppp(h.unmarked), maxDim = 100)$SG
+grd <- slot(sG, "grid")
+summary(grd)
+```
+
+
+
+```{r}
+k0 <- spkernel2d(as.SpatialPoints.ppp(h.unmarked), poly, h0 = bw, grd)
+k1 <- spkernel2d(as.SpatialPoints.ppp(h.unmarked), poly, h0 = 0.05, grd)
+k2 <- spkernel2d(as.SpatialPoints.ppp(h.unmarked), poly, h0 = 0.1, grd)
+k3 <- spkernel2d(as.SpatialPoints.ppp(h.unmarked), poly, h0 = 0.15, grd)
+df <- data.frame(k0 = k0, k1 = k1, k2 = k2, k3 = k3)
+kernels <- SpatialGridDataFrame(grd, data = df)
+summary(kernels)
+```
+
+
+
+### Kernel smoothing using a Gaussian kernel 
+
+
+```{r}
+
+cc <- coordinates(kernels)
+xy <- list(x = cc[, 1], y = cc[, 2])
+k4 <- density(h.unmarked, 0.5 * bw, dimyx = c(100, 100), xy = xy)
+kernels$k4 <- as(k4, "SpatialGridDataFrame")$v
+k5 <- density(h.unmarked, 0.5 * 0.05, dimyx = c(100, 100), xy = xy)
+kernels$k5 <- as(k5, "SpatialGridDataFrame")$v
+k6 <- density(h.unmarked, 0.5 * 0.1, dimyx = c(100, 100), xy = xy)
+kernels$k6 <- as(k6, "SpatialGridDataFrame")$v
+k7 <- density(h.unmarked, 0.5 * 0.15, dimyx = c(100, 100), xy = xy)
+kernels$k7 <- as(k7, "SpatialGridDataFrame")$v
+summary(kernels)
+```
+
+## # Using the log-normal model to calculate intensity
+
+```{r}
+
+loglambda <- function(x, alpha, beta) {
+  l <- alpha + sum(beta * c(x, x * x, prod(x)))
+  return(l)
+}
+
+L <- function(alphabeta, x) {
+  l <- apply(x, 1, loglambda, alpha = alphabeta[1], beta = alphabeta[-1])
+  l <- sum(l)
+  intL <- adaptIntegrate(lowerLimit = c(0, 0), upperLimit = c(1, 1), fDim = 1,
+                         tol = 1e-08, f = function(x, alpha = alphabeta[1],
+                                                   beta = alphabeta[-1]) {
+                                                    exp(loglambda(x, alpha, beta))
+                                                   })
+  l <- l - intL$integral
+  return(l)
+}
+
+x <- as.points(lansing[lansing$marks == "maple", ])
+optbeta <- optim(par = c(log(514), 0, 0, 0, 0, 0), fn = L,
+                 control = list(maxit = 1000, fnscale = -1), x = x)  
+
+optbeta
+```
+
+
+
+# Calculating intensity using the ppm function
+
+```{r}
+
+lmaple <- lansing[lansing$marks == "maple", ]
+ppm(Q = lmaple, trend = ~x + y + I(x^2) + I(y^2) + I(x *y))
+```
+
+
+
+
+
+# 2.	Consider the hypothesis that the density of trees of each type changes along an East-West gradient. For each point pattern, fit a point process model of a non-stationary Poisson process with an intensity function 𝜆 = 𝑒 a+bx. For each point pattern, is the model better than the model you fit in Q1? (4 points)
+
+The core R density function can be used to explore the former using a spatial Kernel Density Estimation (KDE) analysis. 
+
+fit the nonstationary Poisson process  with intensity function lambda(x,y) = exp(a + bx) where x,y are the Cartesian coordinates and a,b are parameters to be estimated
+```{r}
+fit_h2 <- ppm(h.unmarked, ~ polynom(x,2))
+fit_h2
+```
+
+
+
+```{r}
+pred_h2 <- predict(fit_h2)
+plot(pred_h2)
+```
+
+```{r}
+fit_d2 <- ppm((d.unmarked), ~ polynom(x,2))
+fit_d2
+```
+
+
+```{r}
+pred_d2 <- predict(fit_d2)
+plot(pred_d2)
+```
+
+
+
+# 3.	Consider the hypothesis that the tree density is a non-linear function of the 𝑥 coordinate. For each point pattern, fit a point process model of a non-stationary Poisson process with an intensity function 𝜆 = 𝑒 a+bx+cx 2. For each point pattern, is the model better than the model you fit in Q2? (4 points)
+
+
+
+### Kernel Density Estimation
+
+```{r}
+# First - all with Gaussian kernels but with different bandwidth selection procedures
+density.r.1 <- density(h.unmarked) # default with kernel="gaussian", bw = "nrd0"
+density.r.2 <- density(h.unmarked, kernel="gaussian",bw = "nrd")
+density.r.3 <- density(h.unmarked, kernel="gaussian",bw = "ucv")
+density.r.4 <- density(h.unmarked, kernel="gaussian",bw = "SJ-ste")
+
+# Second - all with Gaussian kernels but with different bandwidth adjustments
+density.r.5 <- density(h.unmarked, kernel="gaussian",bw = "ucv",adjust=0.2) # 20%
+density.r.6 <- density(h.unmarked, kernel="gaussian",bw = "ucv",adjust=0.4) # 40%
+density.r.7 <- density(h.unmarked, kernel="gaussian",bw = "ucv",adjust=0.6) # 60%
+density.r.8 <- density(h.unmarked, kernel="gaussian",bw = "ucv",adjust=0.8) # 80%
+
+# Third - with different kernels
+density.r.9 <- density(h.unmarked, kernel="quartic")
+density.r.10 <- density(h.unmarked, kernel="disc")
+density.r.11 <- density(h.unmarked, kernel="epanechnikov")
+density.r.12 <- density(h.unmarked, kernel="gaussian")
+```
+
+```{r}
+.pardefault <- par(no.readonly = T)
+```
+
+
+```{r}
+par(mfrow=c(2,2),mar=c(1,1,1,1))
+plot(density.r.1, main = "# 1")
+plot(density.r.2, main = "# 2")
+plot(density.r.3, main = "# 3")
+plot(density.r.4, main = "# 4")
+```
+
+```{r}
+par(mfrow=c(2,2),mar=c(1,1,1,1))
+plot(density.r.5, main = "20%")
+plot(density.r.6, main = "40%")
+plot(density.r.7, main = "60%")
+plot(density.r.8, main = "80%")
+```
+
+```{r}
+par(mfrow=c(2,2),mar=c(1,1,1,1))
+plot(density.r.9, main="quartic")
+plot(density.r.10, main="disc")
+plot(density.r.11, main="epanechnikov")
+plot(density.r.12, main="gaussian")
+```
+
+```{r}
+# Select a random position for the observed data in the figure.
+# Set the random seed for reproducibility:
+set.seed(123) 
+pos <- sample(1:6,1)
+
+# Simulate 5 CSR point patterns:
+
+simp <- rpoispp(lambda = intensity(h.unmarked),win = Window(h.unmarked),nsim=5)
+
+# Replace the simulated set at the pos'th position by the observed dataset:
+tmp <- simp[[pos]]
+simp[[pos]] <- h.unmarked
+simp[[6]] <- tmp
+names(simp)[6] <- "Simulation 6"
+
+# Compute the KDEs:
+densp <- density(simp)
+
+```
+
+```{r}
+par(mfrow=c(2,3),mar=c(1,1,1,1))
+plot(as.listof(densp), zlim=range(unlist(lapply(densp,range))),
+     main ="Simulations for homogeneity")
+```
+
+```{r}
+par(.pardefault)
+```
+
+##Quadrat counts
+
+```{r}
+Q <- quadratcount(h.unmarked, nx= 5, ny=5)
+```
+
+```{r}
+plot(h.unmarked, pch=20, cols="grey70", main=NULL)  # Plot points
+plot(Q, add=TRUE)  # Add quadrat grid
+```
+
+```{r}
+Q.d <- intensity(Q)
+plot(intensity(Q, image=TRUE), main=NULL, las=1)  # Plot density raster
+plot(h.unmarked, pch=20, cex=0.6, col=rgb(0,0,0,.5), add=TRUE)  # Add points
+```
+
+Intensity of points in quadrats
+
+A chi-square test can then be used to infer if the h.unmarked pattern is homogenous (p > 0.05) or inhomogenous (p < 0.05):
+
+```{r}
+quadrat.test(h.unmarked)
+```
+
+Thus, the null hypothesis of the h.unmarked seedlings & saplings pattern being generated by a spatial random process is rejected - i.e. strong evidence that the point pattern is inhomogenous (or non-stationary). A strong caveat to the quadrat approach is the subjective choice for the number of quadrats (where the default is 5 by 5 = 25 quadrats).
+
+
+
+```{r}
+mod.intercept <- ppm(h.unmarked ~ 1)
+mod.intercept
+```
+
+```{r}
+mod.polynomial <- ppm(h.unmarked ~ polynom(x,y,2))
+mod.polynomial
+```
+
+The first model fitted a stationary Poisson Process, while the second model fitted a non-stationary Poisson Process. The first model assumes the intensity (the density of the redwood seedlings and saplings) is exp(-4.825527	)=0.008022325 throughout the study area (i.e. the trend is stationary and constant). Observe that the exponential arises as the models are log-linear.
+
+```{r}
+plot(mod.polynomial,se=FALSE,how="image")
+```
+
+
+
+
+```{r}
+diagnose.ppm(mod.intercept, which = "smooth")
+```
+
+Here, we can identify areas where the model poorly fits the observed point patterns. We can also use the fitted intensity in the Kinhom function to see if the observed point pattern is more or less clustered than expected from the model fit, again using Ripley’s K function, 
+
+
+```{r}
+K.Ripley.3 <- envelope(h.unmarked,Kinhom,funargs = list(lambda=mod.polynomial),global=TRUE)
+```
+
+```{r}
+plot(K.Ripley.3, main="Modified Ripley’s K function with respect to model fit")
+```
+
+Plot for Modified Ripley’s K function with respect to model fit
+
+We see that the observed point pattern is more clustered than expected based on the model, as the observed curve (Kobs(r)) is consistently higher than the expected curve (Ktheo(r)). One solution would be to use a clustered Poisson point process model via the function kppm:
+
+```{r}
+mod.polynomial.c <- kppm(h.unmarked ~ polynom(x,y,2))
+mod.polynomial.c
+```
+
+```{r}
+plot(mod.polynomial.c, what="statistic", pause=FALSE, main="Inhomogeneous K-function")
+```
+Plot for Inhomogeneous K-function
+
+In this plot : 
+    The dashed red line represents the (iso-corrected) observed K values.
+    The dotted green line represents the expected K values based on Poisson model.
+    The solid black line adds the fitted clustering process (in this case a Thomas process, via kppm) to the
+    Poisson model predictions in (2)
+    Adding a clustering process to the model, clearly improved the model fit (as the solid black line runs through the dashed red line).
+
+
+
+

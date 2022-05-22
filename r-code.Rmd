@@ -1,0 +1,181 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+#Load packages
+library(DBI)
+library(RSQLite)
+library(dplyr)
+```
+
+
+#Q1.
+##a.)
+```{r}
+#connect to db
+metal_db <- dbConnect(RSQLite::SQLite(), "metal.sqlite")
+
+#get bands table
+dbGetQuery(metal_db, "SELECT * FROM bands LIMIT 3")
+#get styles table
+dbGetQuery(metal_db, "SELECT * FROM styles LIMIT 3")
+#get bands_styles table
+dbGetQuery(metal_db, "SELECT * FROM bands_styles LIMIT 3")
+
+```
+##b.
+```{r}
+#copy styles tables to dataframe
+styles_df <- dbGetQuery(metal_db, "SELECT * from styles")
+#copy bands_styles tables to dataframe
+band_styles <- dbGetQuery(metal_db, "SELECT * FROM bands_styles")
+
+#show both dataframes
+styles_df
+band_styles
+```
+##c.
+
+```{r}
+#create datafram of bands formed after 1995
+bands1995 <- dbGetQuery(metal_db, "SELECT * FROM bands WHERE formed >= 1995")
+#show number of rows in dataframe
+nrow(bands1995)
+```
+##d.) 
+```{r}
+#Show sludge genres
+filter(styles_df, grepl("sludge", styles_df$style))
+
+```
+## e.)
+```{r}
+#gets sludge bands after 1995
+sludge_1995 <- dbGetQuery(metal_db, "SELECT bands.bandid, band_name, styles.style, bands.formed
+FROM bands
+INNER JOIN 
+bands_styles 
+ON bands.bandid == bands_styles.bandid
+INNER JOIN 
+styles
+ON styles.styleid == bands_styles.styleid
+WHERE styles.style LIKE '%sludge%'
+AND bands.formed >= 1995")
+```   
+
+##f. Using base R count the number of bands by country in the subset of bands formed from 1995 onwards. List the top 10 countries, and the number of bands, in decreasing order of numbers of bands.
+```{r}
+bands_by_country <- aggregate(bands1995$origin, by=list(bands1995$origin), FUN=length) %>% arrange(desc(x))
+
+bands_by_country %>% slice(1:10)
+
+```
+##g. Repeat the above using dplyr, and save the top 10 list of countries in a tibble or data frame called top10. Print out the contents of top10 to verify you have the same list of countries.
+```{r}
+
+```
+
+##h. Using dplyr commands, and for the bands formed in 1995 or later in the top 10 countries, overwrite the top10 data frame with a new data frame with the following information:
+#origin = country
+#numBands = number of bands
+#meanFans = mean fans per band
+#totalFans = total number of fans for all the bands from that country
+#Output the list in decreasing order of number of bands.
+
+```{r}
+
+```
+
+##i. Use ggplot to draw a suitably labelled barchart of the number of bands by country in the top 10. (Make sure it has a title and readable axis labels.)
+```{r}
+
+```
+
+##j. Using ggplot, draw a horizontal bar chart of the number of sludge bands per country.
+```{r}
+
+```
+
+#Q2
+
+#a. Use ggplot to draw a horizontal bar chart of the number of individuals of each species.
+```{r}
+#load ggplot
+library("ggplot2")
+#display starwars df
+starwars
+#plot species horizontal
+ggplot(starwars, aes(x=species)) + geom_bar() + coord_flip()
+```
+##b.) Add a column num to the starwars data set showing the number of individuals of each species. (e.g. for any individual of species ‘Zabrak’, num will have the value of the total number of Zabraks in the whole data set.)
+```{r}
+#copy df
+my.starwars <- starwars
+
+#my.starwars['num'] <- 
+aggregate(my.starwars$species, by=list(my.starwars$species), FUN=length)
+
+```
+##c. Add a column mainspecies to the starwars data set which has the value of species where num>1, and ‘Other’ if num is 1. (This will assign any individuals that are unique in the data set to a single class.)
+```{r}
+
+```
+
+##d. Use ggplot to draw a scatter plot of the height and mass variables. Colour the points by mainspecies.
+```{r}
+
+```
+
+##e. Identify the name, height, weight and species of the clear outlier in the graph, and redraw the scatter plot without that individual.
+```{r}
+
+```
+
+##f. Create two side by side scatter plots of height and weight, one for humans and one for droids. Overlay a linear fit on each relationship (using the ‘lm’ method). (Note: the aes() specification needs to be in the call to ggplot() or the linear fit function can’t find it.)
+```{r}
+
+```
+
+##g. Draw a set of boxplots of height, with one boxplot per mainspecies.
+```{r}
+
+```
+
+##h. Draw a horizontal stacked bar chart that shows the proportions of the various eye colours within each mainspecies.
+```{r}
+
+```
+
+#Q3
+
+##a.)
+```{r}
+cdata <- read.csv("covid.csv")
+cmeta <- read.csv("covid-meta.csv")
+cdata
+```
+
+##b.) Convert the Period column in cdata from a character variable to an R date, and store the result in a new column date.
+
+#Note that the date format is not consistent: later years have a different date format to earlier years, so you need to adjust for that in your conversion.
+
+#(Hint: Try converting the Period column to a date using a single format, and find the rows where this fails giving an NA. The function is.na() will be useful. Then convert those using a different format. Check that in the end none of your dates are missing.)
+```{r}
+a <- as.Date(cdata$Period, format("%d/%m/%Y"))
+
+```
+
+#c. Draw a line graph of broadband usage in New Zealand over time.
+```{r}
+
+
+```
+
+#d Redraw the graph of broadband usage, restricting to data from the year 2020 only. Comment on the graph, noting and interpreting any specific features you see.
+```{r}
+
+```
+

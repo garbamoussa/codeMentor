@@ -1,0 +1,96 @@
+---
+title: "Costco"
+author: "Kevin Quevedo"
+date: "5/8/2022"
+output: html_document
+---
+
+
+```{r}
+library(tidyverse)
+library(forecast)
+library(ggplot2)
+library(readr)
+library(readxl)
+```
+
+
+
+
+```{r}
+## chicos
+chicos <- read_xlsx("/Users/garbamoussa/Downloads/Chicos .xlsx")
+
+
+str(chicos)
+```
+
+
+```{r}
+head(chicos, 4)
+```
+
+
+
+```{r}
+# regress growth on lagged variables from 2006 and earlier
+## subset in data allows to filter data being used
+reg = lm(Growth ~ lag(Growth)+lag(Capexpercent)+
+           lag(GDPgrowth)+lag(Inflation)+lag(Acquisitionspercent), data = subset(chicos,Year<2007))
+
+# summary of the regression to see significance
+summary(reg)
+```
+
+
+
+```{r}
+
+# save each coefficient as a value
+lg = reg$coefficients[2]
+lc = reg$coefficients[3]
+lgdp = reg$coefficients[4]
+li = reg$coefficients[5]
+int = reg$coefficients[1]
+```
+
+
+
+```{r }
+
+
+# mutate to create new variable of projected growth
+chicos2 = chicos %>% mutate(projected = int + lg*lag(Growth)+lc*lag(Capexpercent)+
+                          lgdp*lag(GDPgrowth)+li*lag(Inflation))
+
+# mutate to create new variable of projected revenues
+chicos2 = chicos2%>% mutate(prorev = (1+projected)*lag(Revenues))
+
+# graph actual revenue and projected revenues on same graph
+Actual <- ggplot(chicos2, aes(x = Year, y = Revenues))+
+  geom_line()+
+  geom_line(aes(x = Year, y = prorev), color="red") 
+
+# graph growth against lagged explanatory variables to see correlation
+Against <- ggplot(chicos, aes(x = Growth, y = lag(Capexpercent)))+
+  geom_point()+
+  geom_smooth(method="lm", se=FALSE)
+  
+plot(Against)
+plot(Actual)
+```
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+```
+

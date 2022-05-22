@@ -1,0 +1,1050 @@
+---
+title: "Honors Thesis"
+author: "Dhanesha Mirpuri"
+date: "May 2022"
+output: html_notebook
+---
+
+```{r}
+library("tidyverse")
+library("AER")
+library("lmtest")
+library("sandwich")
+library("ggplot2")
+library("stargazer")
+```
+
+```{r}
+data = read.table("/Users/dhaneshamirpuri/Documents/maindata6.csv", header = TRUE, fill = TRUE, sep = ',')
+```
+
+cleaning the dataset: 
+- changing everything necessary to numerics
+- replacing N/A's with 0's 
+
+```{r}
+data$etrincometaxespretaxincome[is.na(data$etrincometaxespretaxincome)] = 0
+data$etrincometaxespretaxincome[data$etrincometaxespretaxincome == "#DIV/0!"] = 0
+data$etrincometaxespretaxincome[is.na(data$etrincometaxespretaxincome)] = 0
+data$etrincometaxespretaxincome = as.numeric(data$etrincometaxespretaxincome)
+data$spending_on_tax = as.numeric(data$spending_on_tax)
+data$totalassets = as.numeric(data$totalassets)
+data$numberofemployees = as.numeric(data$numberofemployees)
+data$totaldebt = as.numeric(data$totaldebt)
+data$totalinventory = as.numeric(data$totalinventory)
+data$pretaxincome = as.numeric(data$pretaxincome)
+data$incometaxes = as.numeric(data$incometaxes)
+data$propertyplantandequitment = as.numeric(data$propertyplantandequitment)
+data$rateofassets = as.numeric(data$rateofassets)
+data$researchanddevelopmentexpenses = as.numeric(data$researchanddevelopmentexpenses)
+data$leverageratiooftotaldebttototala = as.numeric(data$leverageratiooftotaldebttototala)
+data$capitalintensityratioofpropertyp = as.numeric(data$capitalintensityratioofpropertyp)
+data$inventoryintensityratioofinvento = as.numeric(data$inventoryintensityratioofinvento)
+data$totspending = as.numeric(data$totspending)
+
+data
+
+```
+changing names of variables to make it easier
+
+#why didnt this work - i have to repeat for every data set??
+```{r}
+etr = data$etrincometaxespretaxincome
+taxlob = data$spending_on_tax
+lob = data$totspending
+assets = data$totalassets
+emp = data$numberofemployees
+debt = data$totaldebt
+invt = data$totalassets
+pretax = data$pretaxincome
+inctax = data$incometaxes
+ppe = data$propertyplantandequitment
+roa = data$rateofassets
+rd = data$researchanddevelopmentexpenses
+levrat = data$leverageratiooftotaldebttototala
+caprat = data$capitalintensityratioofpropertyp
+invrat = data$inventoryintensityratioofinvento
+```
+
+
+after using histograms to check for outliers, dropping values that are less than -1 and greater than 1 for etr
+
+```{r}
+d = filter(data, etr <= 1 & etr >= -1)
+d
+```
+
+graphing etr post dropping outliers to confirm normal distribution
+
+```{r}
+etr2 = d$etr*100
+etrhist = hist(etr2, main = "Effective Tax Rate", xlab = "Effective Tax Rate (%)", breaks = 20, na.rm = TRUE)
+```
+
+testing if its skewed distribution
+```{r}
+median(d$totspending, na.rm = TRUE)
+mean(d$totspending, na.rm = TRUE)
+sqrt(var(d$totspending, na.rm = TRUE))
+```
+
+Histograms to see distributions 
+
+```{r}
+dT1 = filter(d, totspending <= 501500)
+dT2 = filter(d, totspending > 501500)
+totlobbying1 = hist(dT1$totspending, main = "Lobbying Expenditure Distribution", xlab = "Amount Lobbied", breaks = 20, na.rm = TRUE)
+totlobbying2 = hist(dT2$totspending, main = "Lobbying Expenditure Distribution", xlab = "Amount Lobbied", breaks = 20, na.rm = TRUE)
+```
+
+```{r}
+dT1 = filter(data2, totspending >=1 & totspending <= 100000)
+dT2 = filter(data2, totspending >= 10001 & totspending <= 30000)
+dT3 = filter(data2, totspending >= 30001 & totspending <= 50000)
+dT4 = filter(data2, totspending >= 50001 & totspending <= 70000)
+dT5 = filter(data2, totspending >= 70001 & totspending <= 1000000)
+dT6 = filter(data2, totspending >= 1000001 & totspending <= 25000000)
+dT7 = filter(data2, totspending >= 25000001 & totspending <= 300000000)
+dT8 = filter(data2, totspending >= 300000000)
+dT_no_1 = filter(data2, totspending >=1 & totspending <= 2500000)
+
+d_with_zero = filter(data2, totspending <2500000)
+d_without_zero = filter(data2, totspending >=1 & totspending <= 2500000)
+```
+
+Histograms 
+```{r}
+totlobbying = hist(d_with_zero$totspending, main = "Lobbying Expenditure Distribution", xlab = "Amount Lobbied", frequency = TRUE, breaks = 20, na.rm = TRUE)
+totlobbying2 = hist(d_without_zero$totspending, main = "Lobbying Expenditure Distribution", xlab = "Amount Lobbied", frequency = TRUE, breaks = 20, na.rm = TRUE)
+```
+```{r}
+d_with_zero$year = as.numeric(d_with_zero$year)
+d_without_zero$year = as.numeric(d_without_zero$year)
+view(d_with_zero)
+view(d)
+```
+
+```{r}
+taxlobbying = hist(d_with_zero$spending_on_tax, main = "Lobbying Expenditure Distribution", xlab = "Amount Lobbied", frequency = TRUE, breaks = 20, na.rm = TRUE)
+taxlobbying2 = hist(d_without_zero$spending_on_tax, main = "Lobbying Expenditure Distribution", xlab = "Amount Lobbied", frequency = TRUE, breaks = 20, na.rm = TRUE)
+```
+
+
+
+Filtering data by years (entire dataset)
+
+```{r}
+d2000 = filter(d_with_zero, year == 2000)
+d2001 = filter(d_with_zero, year == 2001)
+d2002 = filter(d_with_zero, year == 2002)
+d2003 = filter(d_with_zero, year == 2003)
+d2004 = filter(d_with_zero, year == 2004)
+d2005 = filter(d_with_zero, year == 2005)
+d2006 = filter(d_with_zero, year == 2006)
+d2007 = filter(d_with_zero, year == 2007)
+d2008 = filter(d_with_zero, year == 2008)
+d2009 = filter(d_with_zero, year == 2009)
+d2010 = filter(d_with_zero, year == 2010)
+d2011 = filter(d_with_zero, year == 2011)
+d2012 = filter(d_with_zero, year == 2012)
+d2013 = filter(d_with_zero, year == 2013)
+d2014 = filter(d_with_zero, year == 2014)
+d2015 = filter(d_with_zero, year == 2015)
+d2016 = filter(d_with_zero, year == 2016)
+d2017 = filter(d_with_zero, year == 2017)
+d2018 = filter(d_with_zero, year == 2018)
+d2019 = filter(d_with_zero, year == 2019)
+
+avglist = list(
+  mean(d2000$totspending, na.rm= TRUE),
+  mean(d2001$totspending, na.rm= TRUE),
+  mean(d2002$totspending, na.rm= TRUE),
+  mean(d2003$totspending, na.rm= TRUE),
+  mean(d2004$totspending, na.rm= TRUE),
+  mean(d2005$totspending, na.rm= TRUE),
+  mean(d2006$totspending, na.rm= TRUE),
+  mean(d2007$totspending, na.rm= TRUE),
+  mean(d2008$totspending, na.rm= TRUE),
+  mean(d2008$totspending, na.rm= TRUE),
+  mean(d2010$totspending, na.rm= TRUE),
+  mean(d2011$totspending, na.rm= TRUE),
+  mean(d2012$totspending, na.rm= TRUE),
+  mean(d2013$totspending, na.rm= TRUE),
+  mean(d2014$totspending, na.rm= TRUE),
+  mean(d2015$totspending, na.rm= TRUE),
+  mean(d2016$totspending, na.rm= TRUE),
+  mean(d2017$totspending, na.rm= TRUE),
+  mean(d2018$totspending, na.rm= TRUE),
+  mean(d2019$totspending, na.rm= TRUE))
+
+avglist = as.numeric(avglist)
+avglist
+```
+
+Descriptive statistics
+```{r}
+stargazer(d, type = "text", title="Descriptive statistics", digits=1, out="table1.txt")
+stargazer(d_with_zero, type = "text", title="Descriptive statistics", digits=1, out="table1.txt")
+stargazer(d_without_zero, type = "text", title="Descriptive statistics", digits=1, out="table1.txt")
+```
+```{r}
+head(d)
+```
+
+
+
+Running individual regressions on etr and each variable to get some idea of correlation/relationship
+(Kind of tells me which variables I need to log transform from the original dataset)
+
+```{r}
+etrreg1 = lm(etrincometaxespretaxincome ~ totspending, d)
+summary(etrreg1)
+
+etrreg2 = lm(etrincometaxespretaxincome ~ spending_on_tax, d)
+summary(etrreg2)
+
+etrreg3 = lm(etrincometaxespretaxincome ~ totalassets, d)
+summary(etrreg3)
+
+etrreg4 = lm(etrincometaxespretaxincome ~ numberofemployees, d)
+summary(etrreg4)
+
+etrreg5 = lm(etrincometaxespretaxincome ~ rateofassets, d)
+summary(etrreg5)
+
+etrreg6 = lm(etrincometaxespretaxincome ~ researchanddevelopmentexpenses, d)
+summary(etrreg6)
+
+etrreg7 = lm(etrincometaxespretaxincome ~ leverageratiooftotaldebttototala, d)
+summary(etrreg7)
+
+etrreg8 = lm(etrincometaxespretaxincome ~ capitalintensityratioofpropertyp, d)
+summary(etrreg8)
+
+etrreg9 = lm(etrincometaxespretaxincome ~ inventoryintensityratioofinvento, d)
+summary(etrreg9)
+
+etrreg10 = lm(etrincometaxespretaxincome ~log1p(totspending),d )
+etrreg10
+
+
+```
+Normal Regressions with total lobbying (both log and not logged) with both datasets
+Deciding to log the positive data/lobbying variables
+
+ log1p()
+
+```{r}
+tot1 = lm(etrincometaxespretaxincome ~ totspending, d_with_zero)
+summary(tot1)
+coeftest(tot1,df=Inf,vcov=vcovHC(tot1,type = "HC1"))
+
+tot2 = lm(etr ~ lob, d_without_zero)
+summary(tot2)
+coeftest(tot2,df=Inf,vcov=vcovHC(tot2,type = "HC1"))
+
+tot3 = lm(etr ~ log1p(lob), d)
+summary(tot3)
+coeftest(tot3,df=Inf,vcov=vcovHC(tot3,type = "HC1"))
+```
+
+```{r}
+tot4 = lm(etrincometaxespretaxincome ~ totspending + totalassets , d_with_zero)
+summary(tot4)
+coeftest(tot4,df=Inf,vcov=vcovHC(tot4,type = "HC1"))
+
+tot5 = lm(etrincometaxespretaxincome ~ totspending + totalassets , d_without_zero)
+summary(tot5)
+coeftest(tot5,df=Inf,vcov=vcovHC(tot5,type = "HC1"))
+
+tot6 = lm(etrincometaxespretaxincome ~ log1p(totspending) + log1p(totalassets), d)
+summary(tot6)
+coeftest(tot6,df=Inf,vcov=vcovHC(tot6,type = "HC1"))
+```
+```{r}
+tot7 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees , d_with_zero)
+summary(tot7)
+coeftest(tot7,df=Inf,vcov=vcovHC(tot7,type = "HC1"))
+
+tot8 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees, d_without_zero)
+summary(tot8)
+coeftest(tot8,df=Inf,vcov=vcovHC(tot8,type = "HC1"))
+
+tot9 = lm(etrincometaxespretaxincome ~  log1p(totspending) +  log1p(totalassets) +  log1p(numberofemployees), d)
+summary(tot9)
+coeftest(tot9,df=Inf,vcov=vcovHC(tot9,type = "HC1"))
+```
+
+```{r}
+tot10 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets , d_with_zero)
+summary(tot10)
+coeftest(tot10,df=Inf,vcov=vcovHC(tot10,type = "HC1"))
+
+tot11 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets, d_without_zero)
+summary(tot11)
+coeftest(tot11,df=Inf,vcov=vcovHC(tot11,type = "HC1"))
+
+tot12 = lm(etrincometaxespretaxincome ~ log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(rateofassets), d)
+summary(tot12)
+coeftest(tot12,df=Inf,vcov=vcovHC(tot12,type = "HC1"))
+```
+
+
+```{r}
+tot13 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses, d_with_zero)
+summary(tot13)
+coeftest(tot13,df=Inf,vcov=vcovHC(tot13,type = "HC1"))
+
+tot14 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses, d_without_zero)
+summary(tot14)
+coeftest(tot14,df=Inf,vcov=vcovHC(tot14,type = "HC1"))
+
+tot15 = lm(etrincometaxespretaxincome ~ log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(rateofassets) + log1p(researchanddevelopmentexpenses), d)
+summary(tot15)
+coeftest(tot15,df=Inf,vcov=vcovHC(tot15,type = "HC1"))
+```
+```{r}
+tot16 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + leverageratiooftotaldebttototala, d_with_zero)
+summary(tot16)
+coeftest(tot16,df=Inf,vcov=vcovHC(tot16,type = "HC1"))
+
+tot17 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + leverageratiooftotaldebttototala, d_without_zero)
+summary(tot17)
+coeftest(tot17,df=Inf,vcov=vcovHC(tot17,type = "HC1"))
+
+tot18 = lm(etrincometaxespretaxincome ~ log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(rateofassets) + log1p(researchanddevelopmentexpenses) + log1p(leverageratiooftotaldebttototala), d)
+summary(tot18)
+coeftest(tot18,df=Inf,vcov=vcovHC(tot18,type = "HC1"))
+```
+
+```{r}
+tot19 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp, d_with_zero)
+summary(tot19)
+coeftest(tot19,df=Inf,vcov=vcovHC(tot19,type = "HC1"))
+
+tot20 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp, d_without_zero)
+summary(tot20)
+coeftest(tot20,df=Inf,vcov=vcovHC(tot20,type = "HC1"))
+
+tot21 = lm(etrincometaxespretaxincome ~ log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(rateofassets) + log1p(researchanddevelopmentexpenses) + log1p(leverageratiooftotaldebttototala) +log1p(capitalintensityratioofpropertyp), d)
+summary(tot21)
+coeftest(tot21,df=Inf,vcov=vcovHC(tot21,type = "HC1"))
+```
+```{r}
+tot22 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento , d_with_zero)
+summary(tot22)
+coeftest(tot22,df=Inf,vcov=vcovHC(tot22,type = "HC1"))
+
+tot23 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, d_without_zero)
+summary(tot23)
+coeftest(tot23,df=Inf,vcov=vcovHC(tot23,type = "HC1"))
+
+tot24 = lm(etrincometaxespretaxincome ~ log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(rateofassets) + log1p(researchanddevelopmentexpenses) + log1p(leverageratiooftotaldebttototala) +log1p(capitalintensityratioofpropertyp) +log1p(inventoryintensityratioofinvento), d)
+summary(tot24)
+coeftest(tot24,df=Inf,vcov=vcovHC(tot24,type = "HC1"))
+
+```
+
+```{r}
+tot25 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento , d_with_zero)
+summary(tot25)
+coeftest(tot25,df=Inf,vcov=vcovHC(tot25,type = "HC1"))
+
+tot26 = lm(etrincometaxespretaxincome ~ log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(rateofassets) + log1p(researchanddevelopmentexpenses) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), d)
+summary(tot26)
+coeftest(tot26,df=Inf,vcov=vcovHC(tot26,type = "HC1"))
+
+
+
+```
+
+Now table of the regressions: 
+
+```{r}
+stargazer(etrreg1, etrreg10, tot21, tot24, tot26, type = "text")
+```
+
+
+Running the same regressions but specifically on tax lobbying
+
+
+```{r}
+taxlob1 = lm(etrincometaxespretaxincome ~ spending_on_tax, d_with_zero)
+summary(taxlob1)
+coeftest(taxlob1,df=Inf,vcov=vcovHC(taxlob1,type = "HC1"))
+
+taxlob2 = lm(etrincometaxespretaxincome ~ spending_on_tax, d_without_zero)
+summary(taxlob2)
+coeftest(taxlob2,df=Inf,vcov=vcovHC(taxlob2,type = "HC1"))
+
+taxlob3 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax), d)
+summary(taxlob3)
+coeftest(taxlob3,df=Inf,vcov=vcovHC(taxlob3,type = "HC1"))
+```
+
+```{r}
+taxlob4 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets, d_with_zero)
+summary(taxlob4)
+coeftest(taxlob4,df=Inf,vcov=vcovHC(taxlob4,type = "HC1"))
+
+taxlob5 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets , d_without_zero)
+summary(taxlob5)
+coeftest(taxlob5,df=Inf,vcov=vcovHC(taxlob5,type = "HC1"))
+
+taxlob6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets), d)
+summary(taxlob6)
+coeftest(taxlob6,df=Inf,vcov=vcovHC(taxlob6,type = "HC1"))
+```
+
+```{r}
+taxlob7 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees, d_with_zero)
+summary(taxlob7)
+coeftest(taxlob7,df=Inf,vcov=vcovHC(taxlob7,type = "HC1"))
+
+taxlob8 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees, d_without_zero)
+summary(taxlob8)
+coeftest(taxlob8,df=Inf,vcov=vcovHC(taxlob8,type = "HC1"))
+
+taxlob9 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees), d)
+summary(taxlob9)
+coeftest(taxlob9,df=Inf,vcov=vcovHC(taxlob9,type = "HC1"))
+```
+```{r}
+taxlob10 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses, d_with_zero)
+summary(taxlob10)
+coeftest(taxlob10,df=Inf,vcov=vcovHC(taxlob10,type = "HC1"))
+
+taxlob11 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses , d_without_zero)
+summary(taxlob11)
+coeftest(taxlob11,df=Inf,vcov=vcovHC(taxlob11,type = "HC1"))
+
+taxlob12 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses), d)
+summary(taxlob12)
+coeftest(taxlob12,df=Inf,vcov=vcovHC(taxlob12,type = "HC1"))
+```
+```{r}
+taxlob13 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + leverageratiooftotaldebttototala, d_with_zero)
+summary(taxlob13)
+coeftest(taxlob13,df=Inf,vcov=vcovHC(taxlob13,type = "HC1"))
+
+taxlob14 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + leverageratiooftotaldebttototala, d_without_zero)
+summary(taxlob14)
+coeftest(taxlob14,df=Inf,vcov=vcovHC(taxlob14,type = "HC1"))
+
+taxlob15 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(leverageratiooftotaldebttototala), d)
+summary(taxlob15)
+coeftest(taxlob15,df=Inf,vcov=vcovHC(taxlob15,type = "HC1"))
+```
+
+
+```{r}
+taxlob16 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala, d_with_zero)
+summary(taxlob16)
+coeftest(taxlob16,df=Inf,vcov=vcovHC(taxlob16,type = "HC1"))
+
+taxlob17 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala , d_without_zero)
+summary(taxlob17)
+coeftest(taxlob17,df=Inf,vcov=vcovHC(taxlob17,type = "HC1"))
+
+taxlob18 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala), d)
+summary(taxlob18)
+coeftest(taxlob18,df=Inf,vcov=vcovHC(taxlob18,type = "HC1"))
+```
+```{r}
+taxlob19 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp, d_with_zero)
+summary(taxlob19)
+coeftest(taxlob19,df=Inf,vcov=vcovHC(taxlob19,type = "HC1"))
+
+taxlob20 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp, d_without_zero)
+summary(taxlob20)
+coeftest(taxlob20,df=Inf,vcov=vcovHC(taxlob20,type = "HC1"))
+
+taxlob21 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp), d)
+summary(taxlob21)
+coeftest(taxlob21,df=Inf,vcov=vcovHC(taxlob21,type = "HC1"))
+```
+```{r}
+taxlob22 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, d_with_zero)
+summary(taxlob22)
+coeftest(taxlob22,df=Inf,vcov=vcovHC(taxlob22,type = "HC1"))
+
+taxlob23 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, d_without_zero)
+summary(taxlob23)
+coeftest(taxlob23,df=Inf,vcov=vcovHC(taxlob23,type = "HC1"))
+
+taxlob24 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), d)
+summary(taxlob24)
+coeftest(taxlob24,df=Inf,vcov=vcovHC(taxlob24,type = "HC1"))
+```
+```{r}
+taxlob25 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), d)
+summary(taxlob25)
+coeftest(taxlob25,df=Inf,vcov=vcovHC(taxlob25,type = "HC1"))
+```
+
+```{r}
+stargazer(taxlob4, taxlob25,type = "text")
+```
+
+Adding fixed effects to the regressions 
+
+```{r}
+library("plm")
+```
+
+
+Running the same regressions before and after 2008 (world crisis)
+
+```{r}
+first = filter(d_with_zero, year <=2009) 
+second = filter(d_with_zero, year >=2010)
+```
+
+
+Running regressions on original data set to compare how outliers impacted estimates for tax lobbying
+```{r}
+taxlob26 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, data)
+summary(taxlob26)
+coeftest(taxlob26,df=Inf,vcov=vcovHC(taxlob26,type = "HC1"))
+```
+
+```{r}
+stargazer(taxlob23, taxlob25, taxlob26, type = "text")
+```
+
+
+Running regressions on original data set to compare how outliers impacted estimates for total lobbying
+
+```{r}
+tot27 = lm(etrincometaxespretaxincome  ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, data)
+summary(tot27)
+coeftest(tot27,df=Inf,vcov=vcovHC(tot27,type = "HC1"))
+```
+
+```{r}
+stargazer(tot25, tot27, type = "text")
+```
+
+sector regressions
+```{r}
+sec=unique(d_without_zero$sector)
+sec
+sector1 = filter(d_with_zero, sector==sector[1])
+sector2 = filter(d_with_zero, sector==sector[2])
+sector3 = filter(d_with_zero, sector==sector[3])
+sector4 = filter(d_with_zero, sector==sector[4])
+sector5 = filter(d_with_zero, sector==sector[5])
+sector6 = filter(d_with_zero, sector==sector[6])
+sector7 = filter(d_with_zero, sector==sector[7])
+sector8 = filter(d_with_zero, sector==sector[8])
+sector9 = filter(d_with_zero, sector==sector[9])
+sector10 = filter(d_with_zero, sector==sector[10])
+sector11 = filter(d_with_zero, sector==sector[11])
+sector12 = filter(d_with_zero, sector==sector[12])
+
+sector13 = filter(d_without_zero, sector==sector[1])
+sector14 = filter(d_without_zero, sector==sector[2])
+sector15 = filter(d_without_zero, sector==sector[3])
+sector16 = filter(d_without_zero, sector==sector[4])
+sector17 = filter(d_without_zero, sector==sector[5])
+sector18 = filter(d_without_zero, sector==sector[6])
+sector19 = filter(d_without_zero, sector==sector[7])
+sector20 = filter(d_without_zero, sector==sector[8])
+sector21 = filter(d_without_zero, sector==sector[9])
+sector22 = filter(d_without_zero, sector==sector[10])
+sector23 = filter(d_without_zero, sector==sector[11])
+sector24 = filter(d_without_zero, sector==sector[12])
+```
+
+Regressing Sectors:
+Utility industry
+```{r}
+util = lm(etrincometaxespretaxincome ~ totspending, sector1)
+coeftest(util,df=Inf,vcov=vcovHC(util,type = "HC1"))
+summary(util)
+util2 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector1) 
+summary(util2)
+coeftest(util2,df=Inf,vcov=vcovHC(util2,type = "HC1"))
+
+util3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector1) 
+summary(util3)
+coeftest(util3,df=Inf,vcov=vcovHC(util3,type = "HC1"))
+
+util4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector1)
+coeftest(util4,df=Inf,vcov=vcovHC(util4,type = "HC1"))
+summary(util4)
+
+util5 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector1) 
+summary(util5)
+coeftest(util5,df=Inf,vcov=vcovHC(util5,type = "HC1"))
+
+util6 = lm(etrincometaxespretaxincome ~log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector1) 
+summary(util6)
+coeftest(util6,df=Inf,vcov=vcovHC(util6,type = "HC1"))
+
+```
+
+
+IT industry
+```{r}
+it = lm(etrincometaxespretaxincome ~ totspending, sector2)
+coeftest(it,df=Inf,vcov=vcovHC(it,type = "HC1"))
+summary(it)
+
+it2 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector2) 
+summary(it2)
+coeftest(it2,df=Inf,vcov=vcovHC(util2,type = "HC1"))
+
+it3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector2) 
+summary(it3)
+coeftest(it3,df=Inf,vcov=vcovHC(it3,type = "HC1"))
+
+it4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector2)
+coeftest(it4,df=Inf,vcov=vcovHC(it4,type = "HC1"))
+summary(it4)
+
+it5 = lm(etrincometaxespretaxincome ~  spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector2) 
+summary(it5)
+coeftest(it5,df=Inf,vcov=vcovHC(it5,type = "HC1"))
+
+it6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector2) 
+summary(it6)
+coeftest(it6,df=Inf,vcov=vcovHC(it6,type = "HC1"))
+```
+
+Health Care
+
+```{r}
+health = lm(etrincometaxespretaxincome ~ totspending, sector3)
+coeftest(health,df=Inf,vcov=vcovHC(health,type = "HC1"))
+summary(health)
+
+
+health2 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector3) 
+summary(health2)
+coeftest(health2,df=Inf,vcov=vcovHC(health2,type = "HC1"))
+
+health3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector3) 
+summary(health3)
+coeftest(health3,df=Inf,vcov=vcovHC(health3,type = "HC1"))
+
+health4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector3)
+coeftest(health4,df=Inf,vcov=vcovHC(health4,type = "HC1"))
+summary(health4)
+
+health5 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector3) 
+summary(health5)
+coeftest(health5,df=Inf,vcov=vcovHC(health5,type = "HC1"))
+
+health6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector3) 
+summary(health6)
+coeftest(health6,df=Inf,vcov=vcovHC(health6,type = "HC1"))
+```
+
+Materials 
+
+```{r}
+material = lm(etrincometaxespretaxincome ~ totspending, sector4)
+coeftest(material,df=Inf,vcov=vcovHC(util,type = "HC1"))
+summary(material)
+
+material2 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector4) 
+summary(material2)
+coeftest(material2,df=Inf,vcov=vcovHC(material2,type = "HC1"))
+
+material3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector4) 
+summary(material3)
+coeftest(material3,df=Inf,vcov=vcovHC(material3,type = "HC1"))
+
+material4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector4)
+coeftest(material4,df=Inf,vcov=vcovHC(util4,type = "HC1"))
+summary(material4)
+
+material5 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector4) 
+summary(material5)
+coeftest(material5,df=Inf,vcov=vcovHC(material5,type = "HC1"))
+
+material6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector4) 
+summary(material6)
+coeftest(material6,df=Inf,vcov=vcovHC(material6,type = "HC1"))
+
+```
+
+Energy 
+```{r}
+energy = lm(etrincometaxespretaxincome ~ totspending, sector5)
+coeftest(energy,df=Inf,vcov=vcovHC(energy,type = "HC1"))
+summary(energy)
+
+energy2 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector5) 
+summary(energy2)
+coeftest(energy2,df=Inf,vcov=vcovHC(energy2,type = "HC1"))
+
+energy3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector5) 
+summary(energy3)
+coeftest(energy3,df=Inf,vcov=vcovHC(energy3,type = "HC1"))
+
+energy4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector5)
+coeftest(energy4,df=Inf,vcov=vcovHC(energy4,type = "HC1"))
+summary(energy4)
+
+energy5 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp+ inventoryintensityratioofinvento, sector5) 
+summary(energy5)
+coeftest(energy5,df=Inf,vcov=vcovHC(energy5,type = "HC1"))
+
+energy6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector5) 
+summary(energy6)
+coeftest(energy6,df=Inf,vcov=vcovHC(energy6,type = "HC1"))
+```
+
+Transport
+```{r}
+tran = lm(etrincometaxespretaxincome ~ totspending, sector6)
+coeftest(tran,df=Inf,vcov=vcovHC(tran,type = "HC1"))
+summary(tran)
+
+tran2 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector6) 
+summary(tran2)
+coeftest(tran2,df=Inf,vcov=vcovHC(tran2,type = "HC1"))
+
+tran3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector6) 
+summary(tran3)
+coeftest(tran3,df=Inf,vcov=vcovHC(tran3,type = "HC1"))
+
+tran4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector6)
+coeftest(tran4,df=Inf,vcov=vcovHC(tran4,type = "HC1"))
+summary(tran4)
+
+tran5 = lm(etrincometaxespretaxincome ~  spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector6) 
+summary(tran5)
+coeftest(tran5,df=Inf,vcov=vcovHC(tran5,type = "HC1"))
+
+tran6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector6) 
+summary(tran6)
+coeftest(tran6,df=Inf,vcov=vcovHC(tran6,type = "HC1"))
+```
+
+
+Industrials
+
+```{r}
+indus = lm(etrincometaxespretaxincome ~ totspending, sector7)
+coeftest(indus,df=Inf,vcov=vcovHC(indus,type = "HC1"))
+summary(indus)
+
+indus2 = lm(etrincometaxespretaxincome ~  totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector7) 
+summary(indus2)
+coeftest(indus2,df=Inf,vcov=vcovHC(indus2,type = "HC1"))
+
+indus3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector7) 
+summary(indus3)
+coeftest(indus3,df=Inf,vcov=vcovHC(indus3,type = "HC1"))
+
+indus4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector7)
+coeftest(indus4,df=Inf,vcov=vcovHC(indus4,type = "HC1"))
+summary(indus4)
+
+indus5 = lm(etrincometaxespretaxincome ~  spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector7) 
+summary(indus5)
+coeftest(indus5,df=Inf,vcov=vcovHC(indus5,type = "HC1"))
+
+indus6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector7) 
+summary(indus6)
+coeftest(indus6,df=Inf,vcov=vcovHC(indus6,type = "HC1"))
+```
+
+Finance Regressions
+
+```{r}
+fin = lm(etrincometaxespretaxincome ~ totspending, sector8)
+coeftest(fin,df=Inf,vcov=vcovHC(fin,type = "HC1"))
+summary(fin)
+
+fin2 = lm(etrincometaxespretaxincome ~  totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector8) 
+summary(fin2)
+coeftest(fin2,df=Inf,vcov=vcovHC(fin2,type = "HC1"))
+
+fin3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector8) 
+summary(fin3)
+coeftest(fin3,df=Inf,vcov=vcovHC(fin3,type = "HC1"))
+
+fin4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector8)
+coeftest(fin4,df=Inf,vcov=vcovHC(fin4,type = "HC1"))
+summary(fin4)
+
+fin5 = lm(etrincometaxespretaxincome ~  spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector8) 
+summary(fin5)
+coeftest(fin5,df=Inf,vcov=vcovHC(fin5,type = "HC1"))
+
+fin6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector8) 
+summary(fin6)
+coeftest(fin6,df=Inf,vcov=vcovHC(fin6,type = "HC1"))
+```
+
+Consumer Discretionary 
+
+```{r}
+cd = lm(etrincometaxespretaxincome ~ totspending, sector9)
+coeftest(cd,df=Inf,vcov=vcovHC(cd,type = "HC1"))
+summary(cd)
+
+cd2 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector9) 
+summary(cd2)
+coeftest(cd2,df=Inf,vcov=vcovHC(cd2,type = "HC1"))
+
+cd3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector9) 
+summary(cd3)
+coeftest(cd3,df=Inf,vcov=vcovHC(cd3,type = "HC1"))
+
+cd4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector9)
+coeftest(cd4,df=Inf,vcov=vcovHC(cd4,type = "HC1"))
+summary(cd4)
+
+cd5 = lm(etrincometaxespretaxincome ~  spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector9) 
+summary(cd5)
+coeftest(cd5,df=Inf,vcov=vcovHC(cd5,type = "HC1"))
+
+cd6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector9) 
+summary(cd6)
+coeftest(cd6,df=Inf,vcov=vcovHC(cd6,type = "HC1"))
+```
+
+Real Estate Regressions 
+
+```{r}
+re = lm(etrincometaxespretaxincome ~ totspending, sector10)
+coeftest(re,df=Inf,vcov=vcovHC(cd,type = "HC1"))
+summary(re)
+
+re2 = lm(etrincometaxespretaxincome ~  totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector10) 
+summary(re2)
+coeftest(re2,df=Inf,vcov=vcovHC(re2,type = "HC1"))
+
+re3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector10) 
+summary(re3)
+coeftest(re3,df=Inf,vcov=vcovHC(re3,type = "HC1"))
+
+re4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector10)
+coeftest(re4,df=Inf,vcov=vcovHC(re4,type = "HC1"))
+summary(re4)
+
+re5 = lm(etrincometaxespretaxincome ~  spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector10) 
+summary(re5)
+coeftest(re5,df=Inf,vcov=vcovHC(re5,type = "HC1"))
+
+re6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector10) 
+summary(re6)
+coeftest(re6,df=Inf,vcov=vcovHC(re6,type = "HC1"))
+```
+
+Consumer Staples Regressions 
+
+```{r}
+cs = lm(etrincometaxespretaxincome ~ totspending, sector11)
+coeftest(cs,df=Inf,vcov=vcovHC(cs,type = "HC1"))
+summary(cs)
+
+cs2 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector11) 
+summary(cs2)
+coeftest(cs2,df=Inf,vcov=vcovHC(cs2,type = "HC1"))
+
+cs3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector11) 
+summary(cs3)
+coeftest(cs3,df=Inf,vcov=vcovHC(cs3,type = "HC1"))
+
+cs4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector11)
+coeftest(cs4,df=Inf,vcov=vcovHC(cs4,type = "HC1"))
+summary(cs4)
+
+cs5 = lm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector11) 
+summary(cs5)
+coeftest(cs5,df=Inf,vcov=vcovHC(cs5,type = "HC1"))
+
+cs6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector11) 
+summary(cs6)
+coeftest(cs6,df=Inf,vcov=vcovHC(cs6,type = "HC1"))
+
+```
+
+Communications Regressions
+
+```{r}
+commun = lm(etrincometaxespretaxincome ~ totspending, sector12)
+coeftest(commun,df=Inf,vcov=vcovHC(commun,type = "HC1"))
+summary(commun)
+
+commun2 = lm(etrincometaxespretaxincome ~  totspending + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector12) 
+summary(commun2)
+coeftest(commun2,df=Inf,vcov=vcovHC(commun2,type = "HC1"))
+
+commun3 = lm(etrincometaxespretaxincome ~log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector12) 
+summary(commun3)
+coeftest(commun3,df=Inf,vcov=vcovHC(commun3,type = "HC1"))
+
+commun4 = lm(etrincometaxespretaxincome ~ spending_on_tax, sector12)
+coeftest(commun4,df=Inf,vcov=vcovHC(commun4,type = "HC1"))
+summary(commun4)
+
+commun5 = lm(etrincometaxespretaxincome ~  spending_on_tax + totalassets + numberofemployees + researchanddevelopmentexpenses + rateofassets + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento, sector12) 
+summary(commun5)
+coeftest(commun5,df=Inf,vcov=vcovHC(commun5,type = "HC1"))
+
+commun6 = lm(etrincometaxespretaxincome ~ log1p(spending_on_tax) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento), sector12) 
+summary(commun6)
+coeftest(commun6,df=Inf,vcov=vcovHC(commun6,type = "HC1"))
+
+```
+
+Dummy variable for election years
+
+
+```{r}
+
+summary(d$year)
+summary(d_with_zero$year)
+
+# Remove NAs
+d_with_zero_no_NA <- d_with_zero %>%
+  drop_na(year)
+
+summary(d_with_zero_no_NA$year)
+
+# Transform year into a factor (category)
+d_with_zero_no_NA$year = as.factor(d_with_zero_no_NA$year)
+
+summary(d_with_zero_no_NA$year)
+
+# See effect of all years
+years = lm(etrincometaxespretaxincome ~ totspending + year, data = d_with_zero_no_NA)
+summary(years)
+
+
+```
+
+```{r}
+# Set dummy variables for years 2004, 2008, 2012, 2016
+d_with_zero_no_NA = d_with_zero_no_NA %>%
+  mutate(y_2004 = as.factor(if_else(year == 2004, 1, 0)),
+         y_2000 = as.factor(if_else(year == 2000, 1, 0)),
+         y_2008 = as.factor(if_else(year == 2008, 1, 0)),
+         y_2012 = as.factor(if_else(year == 2012, 1, 0)),
+         y_2016 = as.factor(if_else(year == 2016, 1, 0)))
+
+d_with_zero_no_NA2 = d_with_zero_no_NA %>%
+  mutate(y_2004 = as.factor(if_else(year == 2004, 0, 1)),
+         y_2000 = as.factor(if_else(year == 2000, 0, 1)),
+         y_2008 = as.factor(if_else(year == 2008, 0, 1)),
+         y_2012 = as.factor(if_else(year == 2012, 0, 1)),
+         y_2016 = as.factor(if_else(year == 2016, 0, 1)))
+
+
+
+# Effect for years 2004, 2008, 2012, 2016
+elections = lm(etrincometaxespretaxincome ~ totspending + y_2004 +
+        y_2008 + y_2012 + y_2016 + y_2000, data = d_with_zero_no_NA)
+summary(elections)
+
+elections2 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets +researchanddevelopmentexpenses + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento + y_2004 +
+        y_2008 + y_2012 + y_2016 + y_2000, data = d_with_zero_no_NA)
+summary(elections2)
+
+elections3 = lm(etrincometaxespretaxincome ~ log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento) + y_2004 +
+        y_2008 + y_2012 + y_2016 + y_2000, d_with_zero_no_NA)
+summary(elections3)
+
+elections4 = lm(etrincometaxespretaxincome ~ totspending + y_2004 +
+        y_2008 + y_2012 + y_2016 + y_2000, data = d_with_zero_no_NA2)
+summary(elections4)
+
+elections5 = lm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets +researchanddevelopmentexpenses + leverageratiooftotaldebttototala + capitalintensityratioofpropertyp + inventoryintensityratioofinvento + y_2004 +
+        y_2008 + y_2012 + y_2016 + y_2000, data = d_with_zero_no_NA2)
+summary(elections5)
+
+elections6 = lm(etrincometaxespretaxincome ~ log1p(totspending) + log1p(totalassets) + log1p(numberofemployees) + log1p(researchanddevelopmentexpenses) + log1p(rateofassets) + log1p(leverageratiooftotaldebttototala) + log1p(capitalintensityratioofpropertyp) + log1p(inventoryintensityratioofinvento) + y_2004 +
+        y_2008 + y_2012 + y_2016 + y_2000, d_with_zero_no_NA2)
+summary(elections6)
+
+                
+```
+
+```{r}
+stargazer(etrreg2, elections, elections4, type = "text")
+```
+
+
+Fixed Effects
+
+```{r}
+fixtot = plm(etrincometaxespretaxincome ~ totspending, d_with_zero_no_NA, index = c("year"), model = "within", effect = "individual")
+summary(fixtot) 
+
+fixtot2 = plm(etrincometaxespretaxincome ~ totspending, d_with_zero_no_NA, index = c("year","firmname"), model = "within", effect = "individual")
+summary(fixtot2)
+
+fixtot3 = plm(etrincometaxespretaxincome ~ totspending, d_with_zero_no_NA, index = "firmname", model = "within", effect = "individual")
+summary(fixtot3)
+```
+
+```{r}
+fixtot4 = plm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + inventoryintensityratioofinvento + capitalintensityratioofpropertyp + leverageratiooftotaldebttototala, d_with_zero_no_NA, index = c("year"), model = "within", effect = "individual")
+summary(fixtot4) 
+
+fixtot5 = plm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + inventoryintensityratioofinvento + capitalintensityratioofpropertyp + leverageratiooftotaldebttototala, d_with_zero_no_NA, index = c("year","firmname"), model = "within", effect = "individual")
+summary(fixtot5)
+
+fixtot6 = plm(etrincometaxespretaxincome ~ totspending + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + inventoryintensityratioofinvento + capitalintensityratioofpropertyp + leverageratiooftotaldebttototala, d_with_zero_no_NA, index = "firmname", model = "within", effect = "individual")
+summary(fixtot6)
+
+stargazer(fixtot4, fixtot5, fixtot6, type = "text")
+```
+
+
+```{r}
+fixtax = plm(etrincometaxespretaxincome ~ spending_on_tax, d_with_zero_no_NA, index = c("year"), model = "within", effect = "individual")
+summary(fixtax) 
+
+fixtax2 = plm(etrincometaxespretaxincome ~ spending_on_tax, d_with_zero_no_NA, index = c("year","firmname"), model = "within", effect = "individual")
+summary(fixtax2)
+
+fixtax3 = plm(etrincometaxespretaxincome ~ spending_on_tax, d_with_zero_no_NA, index = "firmname", model = "within", effect = "individual")
+summary(fixtax3)
+
+stargazer(fixtax,fixtax,fixtax3, type = "text")
+```
+
+```{r}
+fixtax4 = plm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + inventoryintensityratioofinvento + capitalintensityratioofpropertyp + leverageratiooftotaldebttototala, d_with_zero_no_NA, index = c("year"), model = "within", effect = "individual")
+summary(fixtax4) 
+
+fixtax5 = plm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + inventoryintensityratioofinvento + capitalintensityratioofpropertyp + leverageratiooftotaldebttototala, d_with_zero_no_NA, index = c("year","firmname"), model = "within", effect = "individual")
+summary(fixtax5)
+
+fixtax6 = plm(etrincometaxespretaxincome ~ spending_on_tax + totalassets + numberofemployees + rateofassets + researchanddevelopmentexpenses + inventoryintensityratioofinvento + capitalintensityratioofpropertyp + leverageratiooftotaldebttototala, d_with_zero_no_NA, index = "firmname", model = "within", effect = "individual")
+summary(fixtax6)
+
+stargazer(fixtax4, fixtax5, fixtax6, type = "text")
+```
+
+
+```{r}
+library("stats")
+library("DataCombine")
+```
+
+# Creating Time Series Dataset
+
+```{r}
+tsdata = ts(d_with_zero_no_NA, start=c(2001), end=c(2019), frequency = 1)
+as.data.frame(tsdata)
+buz = as.data.frame(tsdata)
+buz_prime = slide(buz, "totspending", NewVar = "lobbying_lag", slideBy= -1)
+buz_prime
+
+
+```
+
+```{r}
+buzz = lm(etrincometaxespretaxincome ~ totspending, buz)
+
+summary(buzz)
+```

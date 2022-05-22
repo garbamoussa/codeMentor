@@ -1,0 +1,449 @@
+---
+title: "MLDataR"
+author: "GARBA Moussa"
+date: "4/25/2022"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(naniar)
+library(corrplot)
+library(caret)
+library(caTools)
+library(MLDataR)
+```
+
+
+## 1. Read the data
+
+
+
+the data from MLData and thyroid_disease data   
+```{r}
+
+thyroid_disease <- MLDataR::thyroid_disease
+```
+
+```{r}
+glimpse(thyroid_disease)
+```
+
+
+```{r}
+thyroid_disease %>% map_df(~(data.frame(n_distinct = n_distinct(.x),
+                                  class = class(.x))),
+                     .id = "variable")
+```
+
+
+```{r}
+glimpse(thyroid_disease)
+```
+
+## 2. Clean data and check on na value   
+
+```{r}
+gg_miss_var(thyroid_disease)
+```
+
+
+```{r}
+summary(thyroid_disease)
+```
+
+
+```{r}
+colSums(is.na(thyroid_disease))
+```
+
+
+
+```{r}
+thyroid_disease$T3_reading[is.na(thyroid_disease$T3_reading)] <- mean(thyroid_disease$TSH_reading, na.rm = TRUE)
+
+thyroid_disease$thyrox_util_rate_T4U_reading[is.na(thyroid_disease$thyrox_util_rate_T4U_reading)] <- mean(thyroid_disease$thyrox_util_rate_T4U_reading, na.rm = TRUE)
+
+
+thyroid_disease$T4_reading[is.na(thyroid_disease$T4_reading)] <- mean(thyroid_disease$T4_reading, na.rm = TRUE)
+
+thyroid_disease$FTI_reading[is.na(thyroid_disease$FTI_reading)] <- mean(thyroid_disease$FTI_reading, na.rm = TRUE)
+
+thyroid_disease$patient_age[is.na(thyroid_disease$patient_age)] <- mean(thyroid_disease$patient_age, na.rm = TRUE)
+
+
+thyroid_disease$TSH_reading[is.na(thyroid_disease$TSH_reading)] <- mean(thyroid_disease$TSH_reading, na.rm = TRUE)
+
+```
+
+
+```{r}
+gg_miss_var(thyroid_disease)
+```
+
+
+## 3. Outliers checking
+```{r}
+thyroid_disease %>% 
+   select_if(is.numeric) %>% 
+   boxplot(main = 'Boxplot of parameters', xlab = 'Parameters', ylab = 'Values')
+```
+
+te variabke TS_reading, FTI.. hhave may outliers 
+```{r}
+# TSH_reading
+outlier_TSH_reading <- min(boxplot(thyroid_disease$TSH_reading, plot = FALSE)$out)
+thyroid_disease.outliers <- thyroid_disease %>% 
+   filter(TSH_reading >= outlier_TSH_reading)
+
+# 
+boxplot(thyroid_disease$FTI_measured, plot = FALSE)$out
+```
+
+```{r}
+##AGE
+hist(thyroid_disease$patient_age, freq = FALSE, main = "Age\n density curve", ylim = c(0,0.025), xlab = "Age")
+lines(density(thyroid_disease$patient_age), lwd = 2, col = 'red')
+x <- seq(min(thyroid_disease$patient_age), max(thyroid_disease$patient_age))
+f <- dnorm(x, mean = mean(thyroid_disease$patient_age), sd = sd(thyroid_disease$patient_age))
+lines(x, f, col = "blue", lwd = 2)
+
+#Legend
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = 'l', bty = 'n', xaxt = 'n', yaxt = 'n')
+legend("bottom",legend = c("Histogram", "Normal distribution", "Density curve over a histogram"), col = c("black","blue", "red"), lwd = 2, xpd = TRUE, 
+       horiz = TRUE, cex = 1, seg.len=1, bty = 'n')
+```
+
+```{r}
+plot(thyroid_disease[,c(2:5)], col="blue")
+```
+
+
+```{r}
+library(GGally)
+ggpairs(thyroid_disease[,c(2:5)],lower = list(continuous = wrap('points', colour = "blue")),
+  diag = list(continuous = wrap("barDiag", colour = "red"))
+    )
+```
+
+```{r}
+ggplot(thyroid_disease, aes(x=as.factor(ref_src) )) +
+  geom_bar(color="red", fill=rgb(0.1,0.4,0.5,0.7) )+ ggtitle("ref_src") +
+  xlab("ref_src") + ylab("Value")
+```
+
+```{r}
+ggplot(thyroid_disease, aes(x=as.factor(ThryroidClass) )) +
+  geom_bar(color="red", fill=rgb(0.1,0.4,0.5,0.7) )+ ggtitle("ThryroidClass") +
+  xlab("ThryroidClass") + ylab("Value")
+```
+
+
+```{r}
+corrplot(cor(thyroid_disease[,c(2:20)]), method = "number", type = "upper")
+```
+
+
+```{r}
+library(plyr)
+thyroid_disease$ThryroidClass <- revalue(thyroid_disease$ThryroidClass, c("sick"=1))
+thyroid_disease$ThryroidClass <- revalue(thyroid_disease$ThryroidClass, c("negative"=0))
+```
+
+
+```{r}
+set.seed(2)
+thyroid_disease$ThryroidClass <- as.factor(thyroid_disease$ThryroidClass)
+sample = sample.split(thyroid_disease$ThryroidClass, SplitRatio = 0.75)
+
+train = subset(thyroid_disease, sample == TRUE)
+test = subset(thyroid_disease, sample == FALSE)
+
+print(dim(train))
+```
+
+```{r}
+unique(thyroid_disease$ThryroidClass)
+```
+
+##4.1 Multi linear regresion
+```{r}
+
+
+
+model_mlr <- glm(ThryroidClass ~ ., data = train, family = 'binomial')
+summary(model_mlr)
+```
+
+##4.2 Polynomial regression, 
+```{r}
+thyroid_disease<-thyroid_disease[complete.cases(thyroid_disease),]
+thyroid_disease$ThryroidClass <- as.factor(thyroid_disease$ThryroidClass)
+split<-createDataPartition(thyroid_disease$patient_age,p=0.8,list=FALSE)
+training<-thyroid_disease[split,]
+testing <-thyroid_disease[-split,]
+
+model_poly <-glm(ThryroidClass  ~ poly(patient_age,2) + poly(patient_gender, 1) + poly(T3_measured, 1), data=training,  family = 'binomial')
+#model<-glm(T3_measured ~ poly(patient_age,1) + poly(patient_gender, 1), data=training)
+summary(model_poly)
+```
+
+```{r}
+library(boot)
+deltas <- rep(NA, 15)
+set.seed(1)
+for (i in 1:15) {
+    fit <- glm(ThryroidClass ~ poly(patient_age, i), data = training,family = 'binomial')
+    deltas[i] <- cv.glm(training, fit, K = 10)$delta[1]
+}
+plot(1:15, deltas, xlab = "Degree", ylab = "Test MSE", type = "l")
+d.min <- which.min(deltas)
+points(which.min(deltas), deltas[which.min(deltas)], col = "red", cex = 2, pch = 20)
+```
+
+
+##4.3 linear and non linear spline fitting
+
+
+```{r}
+library(splines)
+fit_spline <- glm(ThryroidClass~bs(patient_age ,df=6) +bs(T3_measured, df=3) ,data=training, family = 'binomial')
+summary(fit_spline)
+```
+
+
+
+##4.4 poisson regression 
+```{r}
+train$ThryroidClass <- as.numeric(train$ThryroidClass)
+model_poisson <- glm(ThryroidClass ~ .,family = poisson(link="log"),  data = train)
+summary(model_poisson)
+```
+
+
+## 5. Diagnostic testing 
+
+##5.1 Multi linear regresion
+Linearity assumption
+Here, we’ll check the linear relationship between continuous predictor variables and the logit of the outcome. This can be done by visually inspecting the scatter plot between each predictor and the logit values.
+
+ 
+```{r}
+# Predict the probability (p) of diabete positivity
+probabilities <- predict(model_mlr, test,  type = "response")
+predicted.classes <- ifelse(probabilities > 0.5, "pos", "neg")
+head(predicted.classes)
+```
+
+```{r}
+# Select only numeric predictors
+mydata <- train %>%
+  dplyr::select_if(is.numeric) 
+predictors <- colnames(mydata)
+# Bind the logit and tidying the data for plot
+mydata <- mydata %>%
+  mutate(logit = log(probabilities/(1-probabilities))) %>%
+  gather(key = "predictors", value = "predictor.value", -logit)
+```
+
+
+```{r}
+ggplot(mydata, aes(logit, predictor.value))+
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "loess") + 
+  theme_bw() + 
+  facet_wrap(~predictors, scales = "free_y")
+```
+
+```{r}
+plot(model_mlr, which = 4, id.n = 3)
+```
+
+```{r}
+library(broom)
+# Extract model results
+model.data <- augment(model_mlr) %>% 
+  dplyr:: mutate(index = 1:n()) 
+```
+
+```{r}
+model.data %>% top_n(3, .cooksd)
+```
+
+```{r}
+ggplot(model.data, aes(index, .std.resid)) + 
+  geom_point(aes(color = ThryroidClass), alpha = .5) +
+  theme_bw()
+```
+
+
+```{r}
+model.data %>% 
+  filter(abs(.std.resid) > 3)
+```
+
+
+```{r}
+car::vif(model_mlr)
+```
+As a rule of thumb, a VIF value that exceeds 5 or 10 indicates a problematic amount of collinearity. In our example, there is no collinearity: all variables have a value of VIF well below 5.
+
+##5.2 Polynomial regression
+
+```{r}
+
+res<-data.frame(residuals.glm(model_poly))
+head(res)
+```
+
+
+```{r}
+ggplot(res, aes(x=residuals.glm.model_poly.)) + 
+  geom_histogram(aes(y=..density..),colour="black",fill=c("white"))+
+  geom_density(aes(x=residuals.glm.model_poly.,y=..density..),col="blue")+
+  stat_function(fun = dnorm, args = list(mean = mean(res$residuals.glm.model_poly.), sd = sd(res$residuals.PolynomMod.)),col="red")+
+  ylab("Density") + xlab("Residuals")
+```
+```{r}
+par(mfrow=c(2,2))
+plot(model_poly)
+```
+
+The first three plots help to investigate the mentioned above problem with random deviations of the residuals that should have a normal density distribution. The fourth plot also helps to detect influential points and outliers.
+
+```{r}
+library(car)
+influencePlot(model_poly, id=TRUE)
+```
+
+we can see the influence plot which shows the most influential points and outliers. The size of the circles is proportional to the degree of influence of observation. Thus the most influential observations are 20 and 17. Two observations 21 and 26 layout from the intervals of Studentized residuals [-2;2]. They are outliers.
+
+```{r}
+durbinWatsonTest(model_poly)
+```
+In our case, the criteria of DW test is equal to 1.8643679, p-value 0 with a significance level of 0.05. Hence, we conclude that the value of DW criteria is significant at the 5% level and Ho is rejected, showing that autocorrelation is present.
+
+```{r}
+crPlots(model_poly)
+```
+
+
+##5.3 linear and non linear spline fitting
+```{r}
+library(visreg)
+visreg(fit_spline, main="cubic spline")
+```
+
+
+```{r}
+rmsespline <- rep (NA, 40)
+
+for (i in 3:40) {
+    train$ThryroidClass <-  as.factor(train$ThryroidClass)
+    nspline.glm <- glm(ThryroidClass~bs(patient_age ,df=i) + bs(T3_measured, df=i), data = train, family = 'binomial')
+    #predict(mylogit, newdata=mydata, type="response")
+    rmsespline[i] <- predict(nspline.glm, newdata=test, type="response")
+   }
+
+summary(nspline.glm)
+
+```
+
+```{r}
+plot(3:40, rmsespline[-c(1,2)], xlab = "Cuts", ylab = "Error", type = "l")
+points(which.min(rmsespline), rmsespline[which.min(rmsespline)], col = "red", cex = 2, pch = 20)
+```
+
+
+##5.4 poisson regression
+
+
+```{r}
+par(mfrow=c(2,2))
+plot(model_poisson)
+```
+
+## 6. Prediction and accuracy
+
+## 6.1  Multi linear regresion
+
+
+```{r}
+library(kableExtra)
+Predict <- predict(model_mlr, test)
+test$Predict <- ifelse(Predict < 0.6, "0", "1")
+kable(test[1:10,]) %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),latex_options="scale_down")
+```
+```{r}
+cm <- table( test$ThryroidClass,Predict > 0.5) 
+cm
+```
+
+```{r}
+# Sensitivity (TP/TP+FN)
+cm[4]/(cm[3]+cm[2])
+```
+
+```{r}
+# Specificity (TN/TN+FP)
+cm[1]/(cm[1]+cm[3])
+```
+
+```{r}
+# Accuracy (TP+TN)/(no.of dataset)
+(cm[1]+cm[4])/nrow(test)
+```
+
+
+## 6.2  Polynomial regression
+
+```{r}
+Predict <- predict(model_poly, test)
+test$Predict <- ifelse(Predict < 0.6, "0", "1")
+```
+
+```{r}
+cm_poly <- table( test$ThryroidClass,Predict > 0.5) 
+cm_poly
+```
+
+
+## 6.3  linear and non linear spline fitting
+
+
+```{r}
+Predict <- predict(fit_spline, test)
+test$Predict <- ifelse(Predict < 0.6, "0", "1")
+
+cm_spline <- table( test$ThryroidClass,Predict > 0.5) 
+cm_spline
+```
+
+
+## 6.4  poisson regression
+
+
+
+
+```{r}
+Predict <- predict(model_poisson, test)
+test$Predict <- ifelse(Predict < 0.6, "0", "1")
+
+cm_poisson <- table( test$ThryroidClass,Predict > 0.5) 
+cm_poisson
+```
+
+
+```{r}
+# Accuracy (TP+TN)/(no.of dataset)
+(cm_poisson[1]+cm_poisson[4])/nrow(test)
+```
+
