@@ -1,0 +1,409 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsfonts, amssymb, amsthm, amsmath}
+\usepackage{bbm}
+\usepackage[a4paper, total={6in, 10in}]{geometry}
+\usepackage{graphicx}
+\usepackage{listings}
+\graphicspath{ {.} }
+\title{630GWP2}
+\author { Shayne Sprenkle}
+
+\date{May 2022}
+
+\begin{document}
+WQU
+\\\\
+Submission Number: 02
+\\\\
+Group Number: 30
+\\\\
+Group members:
+\begin{table}[ht]
+
+\renewcommand{\arraystretch}{2.5}{
+\\
+\begin{tabular}{|c|c|l|c|}
+\hline
+\textbf{Full Legal Name} & 
+\textbf{Location} & 
+\textbf{E-Mail Address} & 
+\textbf{NC. Member}
+\\
+\hline
+Shayne Alan Sprenkle  & Missouri, USA & shayne.sprenkle.edu@gmail.com &  
+\\
+\hline
+\end{tabular}}
+\caption{Group members}
+\end{table}
+
+\maketitle
+
+\section{Introduction}
+
+This paper discusses the Fourier pricing technique, volatility smile, and the advantages of the Heston model over the Black-Scholes.  First we use the Fourier pricing technique to price a vanilla European call option, assuming Heston model dynamics.  Second, we use the Share Price Path equation and the CEV model to simulate price paths for both various samples sizes and for monthly simulations over the course of one year, assuming constant volatility.  Third, we both calculate and plot the Monte Carlo estimates with standard deviations for the same call option, with respect to sample size.
+Next, we graph a volatility smile of a popular large cap stock. Using public data we calculate both its volatility and at various strike prices, each their implied volatility. We further write a function to validate two of these implied volatilities and calculate its volatility skew.
+Finally, we discuss the Heston model, including its improved estimates of the volatility smile and differences with the Black Scholes model.
+\\\\
+Note: See attached python code for full details.
+
+\subsection{Pricing a Vanilla Call Option} 
+\label{sec:equivalence}
+
+GWP1 Parameters
+\begin{center}
+\begin{tabular}{l|c|r|r}
+\hline
+\textbf{Parameter} & 
+\textbf{Variable} & 
+\textbf{Unit} & 
+\textbf{Value}
+\\
+\hline
+UAO Option Barrier & $L$ & \$150 & 150
+\\
+\hline
+Strike Price & $K$ & \$100 & 100
+\\
+\hline
+Share Price (initial) & $S_t$ & \$100 & 100
+\\
+\hline
+Share Price (final) & $S_T$ & tbd & tbd
+\\
+\hline
+Risk Free Rate & $r$ & 8\% & 0.08
+\\
+\hline
+Underlying Share Volatility & $\sigma_s$ & 30\% & 0.3
+\\
+\hline
+Counter-party Volatility & $\sigma_f$ & 25\% & 0.25
+\\
+\hline
+Debt of Counter-party Due & $D$ & \$175 & 175
+\\
+\hline
+Counter-party-Stock Correlation & $\rho$ & 0.2 & 0.2
+\\
+\hline
+Rate of Recovery & $\delta$ & 25\% & 0.25
+\\
+\hline
+Firm Value (initial) & $V_f$ & \$200 & 200
+\\
+\hline
+\end{tabular}
+\end{center}
+\\\\
+GWP2 Parameters
+\begin{center}
+\begin{tabular}{l|c|r|r}
+\hline
+\textbf{Parameter} & 
+\textbf{Variable} & 
+\textbf{Unit} & 
+\textbf{Value}
+\\
+\hline
+Debt of Counter-party Due & $v_0$ & 6\% & 0.06
+\\
+\hline
+Counter-party-Stock Correlation & $\kappa$ & 9 & 9
+\\
+\hline
+Rate of Recovery & $\theta$ & 6\% & 0.6
+\\
+\hline
+Firm Value (initial) & $\rho$ & -0.04 & -0.04
+\\
+\hline
+\end{tabular}
+\end{center}
+(see python code)
+
+\newpage
+\subsection{Share Price Path Simulations}
+assuming below with $\sigma = 0.3$ and $\gamma = 0.75$
+\begin{equation}
+\begin{split}
+\sigma(t_i, t_{i+1}) = \sigma(S_{ti})^{\gamma-1}
+\end{split}
+\end{equation}
+\\\\
+using below where,
+$S_{ti}$ = Share Price at time $t_i$ \\\\
+$\sigma(t_i, t_{i+1})$ = volatility for period $[t_i, t_{i+1}]$
+\\\\
+$r$ = risk-free interest rate
+\\\\
+Z (approx.) = N(0,1) 
+\begin{equation}
+\begin{split}
+S_{t_{i+1}} = S_{t_i} e^{(r - \frac{\sigma^2(t_i, t_{i+1})}{2})} (t_{i+1}-t_i) + \sigma(t_i, t_{i+1}) \sqrt{t_{i+1}-t_i} Z
+\end{split}
+\end{equation}
+\\\\
+Share price path prices can be simulated for
+1000, 2000, ..., 50000 sample sizes
+\\\\
+(see python code)
+
+
+
+\subsection{Monte Carlo Estimates}
+
+(see python code)
+
+\subsection{Plot the Monte Carlo Estimates}
+Plots with respect to sample size, including three std.dev. error bounds are shown below, using the values of the previous question's MC estimates.
+\\\\
+(see python code)
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+\subsection{Graphing a Volatility Smile} 
+\\\\
+    \includegraphics[width=7cm]{fb-200-calls-for-05-06-2022.PNG} 
+\\\\
+    \includegraphics[width=7cm]{strike200-3above-3below-list.PNG}
+\\\\
+    \includegraphics[width=12cm]{fb-volatility-smile-chart-excel.PNG}
+
+\newpage
+\subsection{Compute Implied Volatility} 
+
+In order of usefulness, the prominent techniques to calculate implied volatility are the Bisection, and Regula Falsi methods (slow), the Newton-Raphson and Secant methods (faster), and the Dekker and Brent  methods (fastest).
+
+The most robust Bisection, and Regula Falsiare are bracketing methods both known to converge, but be very slow. 
+\cite{bisectionWiki}
+\cite{opengenus}
+The Newton-Raphson and Secant methods do not converge (having convergence problems), but are faster since they are quadratic convergence methods. 
+\cite{bisectionMethod}
+The Dekker and Brent methods combine both bracketing features and quadratic convergence features that do converge and maintain the fast computation speeds.
+\cite{medium}
+There also exists three additional methods that improve upon the Brent: Chandrupatla's method, Ridder's method, and the ITP method, each with varying combinations and enhancements for different scenarios to the above.
+\cite{brent}
+\\\\
+Using 1-month USA Treasury T-Bill rate: $0.37\% = 0.0037$
+\\\\
+Bisection method
+\begin{equation}
+\begin{split}
+\sigma_{i+1} = \sigma_L + (c_m - c_L)\frac{\sigma_H - \sigma_L}{c_H - c_L}
+\end{split}
+\end{equation}
+or also, 
+\begin{equation}
+\begin{split}
+f(v) = BlackScholesCall(S, X, T, r, d, v) – Price
+\end{split}
+\end{equation}
+\\\\
+Regula Falsiare method (false position method)
+\begin{equation}
+\begin{split}
+c = b - \frac{af(b)-bf(a)}{f(b)-f(a)}
+\end{split}
+\end{equation}
+\\\\
+Newton-Raphson method (V is option price, sigma is volatility)
+\begin{equation}
+\begin{split}
+\sigma_{n+1} = \sigma_n - \frac{V_{mkt} - V_{BS} (\sigma_n)}{\frac{dV_{BS}(\sigma_n)}{d\sigma}}
+\end{split}
+\end{equation}
+where $V_{mkt}$ = option market price, 
+$V_{BS}$ = option price returned from the Black-Scholes equation,
+$\sigma$ = volatility
+Secant method
+\begin{equation}
+\begin{split}
+\sigma_n = \sigma_{n-i} = \frac{[c_m - c(\sigma_n - 1)](\sigma_{n-1} - \sigma_{n-2})}{c(\sigma_{n-1} - c(\sigma_{n-2})}
+\end{split}
+\end{equation}
+where $c_m$ = market price,
+$\sigma_n$ = result of each iteration, $c(\sigma_n)$ = theoretical price foreach result,
+two initial guesses $\sigma_0$ and $\sigma_1$
+\\\\
+Validation of: strike \$200 with 53.39\%
+\\\\
+(see python code)
+Validation of: strike \$192.50 with 57.03\%
+\\\\
+(see python code)
+
+
+
+
+
+
+
+
+
+
+\subsection{Volatility Skewness} 
+
+\begin{equation}
+\begin{split}
+skew_T^25d = 
+\frac{
+\sigma_{Put}^{25d}(T) - \sigma_{Call}^{25d}(T)}{\sigma^{atm}(T)
+}
+\end{split}
+\end{equation}
+volatility skew 0.4499996144569838
+\\\\
+(see python code)
+
+\cite{skew}
+
+\subsection{Black Scholes Dependence on Strike} 
+
+Yes, volatility depends on the strike level in Black Scholes. In brief, volatility is always changing, so picking a different strike will have a different volatility. BS takes input parameters of 1) underlying, 2) strike, 3) expiry 4) volatility, and 5) interest rate. Picking a strike level is very important before executing an options trade, affecting risk and profit potential.  The most valuable (costly) puts are those with highest strike prices, which are the most sensitive to underlying price changes, with delta approaching -1. On the otherhand, the least valuable (cheapest) puts are those with the lowest strike price, with OTM deltas approaching zero.
+
+\subsection{Heston Model} 
+
+The Heston model gives more precision prediction to price an option due to its use of stochastic volatility. A concept called 'Smile dynamics' is better captured in stochastic volatility models, better than Black Scholes. But when pricing simple derivatives it only depends on the terminal distribution of the underlying asset (a vanilla European option). The only advantage of BS is its faster and easier, but less precise.
+\newpage
+\subsection{Heston Model versus Black Scholes (Non-Technical)} 
+
+Despite the significance of the Black Scholes option pricing model, a solution to its closed-form equation requires two upmost assumptions: 1) the under-lying's price process is continuous and 2) its volatility is constant.  Both are problematic.  Black Scholes is used to calculate the price of an option using volatility as a parameter, however if an observed market option price is taken as its solution, then this volatility parameter can be calculated instead, and is referred to as it's Implied Volatility. The difference between these two approaches can be seen in the plots of the Black Scholes with its constant volatility and the calculated implied volatility: the first is a parallel horizontal line and the latter is a convex curve 'looking like a human smile', i.e. the Volatility Smile.
+\cite{galiotos}
+
+Another related concept is the Implied Volatility Surface that considers many different strike values and maturity times to calculate the implied volatility for each. Thus, relating to the previous paragraph, this surface would be a flat plane since each value would be identical for each strike and maturity.
+\cite{wqu630notes}
+
+These two assumptions above are not seen in real-world market data.  To overcome this lack of realism, the concept of Jump Models replaces the assumption of a continuous price process and the concept of Stochastic Volatility replaces the assumption of constant volatility.  A Jump model, a stochastic model based on the probabilistic mixture model of making statistical inferences of a sub-population based only on its population observations, is used to ensure the under-lying's process fluctuates with random, non-continuous movement; i.e. prices move in large jumps with small continuous movements interspersed between.
+\cite{jumpD}
+
+This is in contrast to the Black Scholes model that assumes the price process to have random, but continuous movements that scale up or down no matter how large or small. Furthermore the market continues to use the Black Scholes formula to price traded derivatives so the question these two new models answers is which value of volatility should be included to get the correct option price.
+\cite{jumpP}
+
+Despite being unfamiliar with stochastic models, any day trader would concur these two newer and better models closer match with real-world market price action.  
+
+One of the prominent authors on stochastic volatility models is Steven Heston.  Heston's models improved upon the Black Scholes model by allowing the spot and volatility process to have a negative, zero, or positive correlation.  The 'smile' or implied volatility curve becomes improved with these allowances resulting in an implied volatility when having 1) a zero correlation, its minimum value is At-The-Money, decreasing values In-The-Money, and increasing values Out-Of-The-Money, 2) a negative correlation, has its minimum value moving left and 3) a positive correlation, has its minimum value moving right.
+
+In other words, changing the sign of the correlation changes the implied volatility curve of the Volatility Smile.  For a zero correlation volatility decreases when In-The-Money and increases when Out-Of-The-Money.  For positive correlation the curve shape became a 'smile' sloping downwards At-The-Money.  For negative correlation the curve shape albeit a 'smile', is sloping upwards At-The-Money.
+
+In summary, the standard Black Scholes model can accurately price a European option, but not an American option. To price an American option we use the Heston model's numerical tree-based methods with non-constant stochastic volatility.
+Additionally the Heston model 1) does not assume a log-normal distribution for the asset price, begin closer to real market values considering the high peak and fat tails of such, 2) has a mean reverting volatility, 3) for European options has a semi-closed form solution, 4) fast calibration using market data, 5) retains the leverage effect.
+\cite{tree}
+
+\newpage
+\begin{center}
+\includegraphics[width=8cm]{zero-corl.png}
+\includegraphics[width=8cm]{pos-corl.png} 
+\includegraphics[width=8cm]{neg-corl.png}
+\end{center}
+
+\section{Conclusion} 
+
+xxx
+
+
+\newpage
+% \usepackage{appendix}
+\appendix
+
+\newpage
+
+\bibliographystyle{plain}
+
+\providecommand{\href}[2]{#2}
+\begingroup
+\raggedright
+\begin{thebibliography}{10}
+
+\bibitem{wqu630notes}
+{
+MScFE 630 Computational Finance - Notes Modules 4-5
+}
+\bibitem{galiotos}
+{
+Galiotos, Vassilis, Stochastic Volatility and the Volatility Smile, Uppsala Universitet, Augusti 2008
+}
+\bibitem{jumpD}
+{
+Jump Diffusion, $https://en.wikipedia.org/wiki/Jump_diffusion$
+}
+\bibitem{jumpP}
+{
+Jump Process,
+$https://en.wikipedia.org/wiki/Jump_process$
+}
+\bibitem{tree}
+{
+Vellekoop, Michel, Nieuwenhuis, Hans, A tree-based method to price American options in the Heston model, The Journal of Computational Finance, Vol. 13/Num. 1, Fall 2009
+}
+
+\bibitem{bisectionWiki}
+{
+Bisection Method, $https://en.wikipedia.org/wiki/Bisection_method$
+}
+\bibitem{newton}
+{
+Implied Volatility, $https://investexcel.net/implied-volatility-vba/$
+}
+\bibitem{bisectionMethod}
+{
+Bisection Method,
+$https://investexcel.net/calculate-implied-volatility-with-the-bisection-method/$
+}
+\bibitem{root}
+{
+Root Finding, $https://en.wikipedia.org/wiki/Root-finding_algorithms$
+}
+\bibitem{ycharts}
+{
+1 Month T-Bill, $https://ycharts.com/indicators/1_month_treasury_rate$
+}
+\bibitem{yahooFinance}
+{
+FB Options, $https://finance.yahoo.com/quote/FB/options?date=1651795200&straddle=false$
+}
+
+\bibitem{medium}
+{
+Medium, $https://medium.com/hypervolatility/extracting-implied-volatility-newton-raphson-secant-and-bisection-approaches-fae83c779e56$
+}
+
+\bibitem{brent}
+{
+Brent, $https://en.wikipedia.org/wiki/Brent\%27s_method$
+}
+\bibitem{opengenus}
+{
+OpenGenus, $https://iq.opengenus.org/regula-falsi-method/$
+}
+\bibitem{wordpress}
+{
+$https://quantipy.wordpress.com/2018/03/31/implied-volatility-using-newton-raphsons-root-finding-method-in-python/$
+}
+\bibitem{mibian}
+{
+$https://github.com/yassinemaaroufi/MibianLib$
+}
+\bibitem{mibian}
+{
+$https://www.macroption.com/black-scholes-strike-price/$
+}
+\bibitem{skew}
+{
+$https://support.skew.com/hc/en-gb/articles/360016624360-How-is-25d-skew-calculated-$
+}
+
+\end{thebibliography}
+
+\end{document}
