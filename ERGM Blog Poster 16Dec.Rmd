@@ -1,0 +1,349 @@
+---
+title: "Exponential Random Graph Model on UK Faculty Dataset "
+author: "Stephanie Rose Flores"
+date: "2022-12-15"
+output: html_document
+---
+
+##UK Faculty on Exponential Random Graph Model in R 
+##750 words
+# Your theoretical framework(s)
+#- Your main hypotheses, if any
+#- A visualization of the network(s) along with any salient attributes
+#- Key modelling decisions
+#- A table of results, if applicable
+#- Discussion of results
+#- Salient diagnostics, if applicable
+#- An evaluation of the goodness of fit of the model, if applicable
+#- Brief conclusions and/or reflections on next steps
+
+#####Exponential Random Graph Model (ERGM). is a statistical model used to study the patterns of connections between individuals in social networks.
+
+#####ERGM can be used to study different patterns of connections in social networks and to understand how these patterns are influenced by different factors. It is a useful tool for researchers who want to learn more about how social networks function and how they can be influenced.
+
+### The study, Nepusz, Petróczi, Négyessy, and Bazsó (2007), Fuzzy communities and the concept of bridgeness in complex networks, provided a method for identifying communities within networks, where each vertex (or node) in the network can belong to multiple communities simultaneously. The method involved calculating membership degrees for each vertex, which represent the extent to which the vertex belongs to a particular community. It included a new measure that can identify outlier vertices that do not belong to any communities, bridge vertices that belong to multiple communities, and regular vertices that primarily belong to a single community. 
+
+###This method was applied to a social network of academic staff at a university in the UK. There were three, separate UK schools and faculty could be a member of each one.  The communities within the network were identified based on the strength of relationships between individuals, as measured by a questionnaire. Unfortunately, the questionnaire would best explain characteristics or attributes common between the individuals. The method identified three communities within the network and provided a measure of how strongly each individual belonged to each community. The results of the method were compared to explicit information about the expected community structure, and it was found that the method was able to correctly classify most of the individuals. The method also identified some individuals who had strong connections to multiple communities, as well as individuals who were central to a particular community. The results showed that the method was able to effectively identify the community structure of the network.
+
+###Modularity is a measure that is used to identify the structure of communities within a network. It looks at how connected the members of a community are to each other, compared to how connected they would be if they were randomly distributed throughout the network. If the members of a community are more connected to each other than would be expected by chance, the community is said to have high modularity.
+
+###Fuzzy modularity is a variant of modularity that allows each node (or vertex) in the network to belong to multiple communities at the same time, rather than just one. This is useful when the boundaries between communities are not clear and it is difficult to assign each node to a single community.
+
+###To calculate fuzzy modularity, the degree to which each node belongs to each community is taken into account. For example, if a node belongs strongly to one community, it will contribute more to the modularity of that community than if it only weakly belongs to the community.
+
+### Fuzzy modularity can be used to identify the structure of communities within a network and to understand how nodes are distributed across multiple communities. It is a useful tool for studying networks where the boundaries between communities are not clear and the relationships between nodes are complex.
+
+###DEGREE OF EACH NODE: In an Exponential Random Graph Model (ERGM), the degree of each node refers to the number of connections or edges that the node has to other nodes in the network. The degree of a node is often used as an input variable in an ERGM, as it can be an important predictor of the likelihood of connections between nodes.
+
+###For example, an ERGM might include an estimate for the probability of two nodes being connected based on their degree, such that nodes with higher degrees are more likely to be connected than nodes with lower degrees. This might be because nodes with high degrees tend to have more connections overall and are therefore more likely to be connected to other nodes. - 
+
+###The degree of each node can be calculated by counting the number of edges that the node has to other nodes in the network. In an ERGM, the degree of each node is used as a predictor variable to help understand the patterns of connections within the network and to make predictions about the likelihood of connections between nodes.
+
+# H1 : UK faculty who are members the 3 different schools [with higher degrees (of a node)] are likely to be connected with each other than UK faculty who is a member of only 1 school [nodes with lower degrees (of a node)]. -Is this correct?
+# H2 : 
+
+#####Exponential random graph models (ERGMs) are a class of statistical models used to analyze and understand the structure of networks. In order to use ERGMs, there are several assumptions that must be made about the data and the statistical model being used. These assumptions include:
+
+#####1. Independence: The presence or absence of each possible edge in the network is assumed to be independent of the presence or absence of other edges.
+
+#####2.Exchangeability: The order in which the observations (i.e., the edges in the network) are collected does not affect the model.
+
+#####3.Finite range: The model is only valid for a finite range of possible edges.
+
+#####4.Stationarity: The model is assumed to be stationary, meaning that the probability of an edge being present does not change over time.
+
+#####5.Local dependence: The presence or absence of an edge between two nodes is assumed to depend only on the edges between those two nodes and their immediate neighbors.
+
+#####ERGM includes a term for the degree of nodes (i.e., the number of edges they have): a positive coefficient for this term would indicate that nodes with a higher degree are more likely to have additional edges, while a negative coefficient would indicate that they are less likely to have additional edges.
+
+
+
+```{r, include=FALSE}
+#install.packages("remotes")
+#library(remotes)
+#remotes::install_github("snlab-ch/migraph")
+#library(migraph)
+#install.packages("igraph", dependencies=TRUE)
+#install.packages("igraphdata")
+#install.packages("statnet")
+#install.packages("dplyr")
+#install.packages("ngram")
+
+```
+
+
+
+```{r, include=FALSE}
+library(remotes)
+library(tidyverse)
+library(migraph)
+library(tidygraph)
+library(statnet)
+library(igraphdata)
+library(statnet)
+library(ngram)
+library(dplyr)
+```
+
+Data: The personal friendship network of a faculty of a UK university, consisting of 81 vertices (individuals) and 817 directed and weighted connections. The school affiliation of each individual is stored as a vertex attribute. This data comes from the igraph package.
+```{r, include=FALSE}
+nodes <- load("/Users/stephanie/Downloads/dataset-ukfaculty-2008-subset1-nodes.Rdata")
+nodes <- data 
+
+edges <- load("/Users/stephanie/Downloads/dataset-ukfaculty-2008-subset1-edges.Rdata")
+edges <- data 
+```
+
+In the Nodes dataset, there are 81 rows and 3 columns (attributes are: the ID, department and the degree). We also see that there is data on the dept and the degree.
+```{r, echo=FALSE}
+glimpse(nodes)
+skimr::skim(nodes)
+summary(nodes) 
+```
+
+
+```{r, echo=FALSE, fig.cap="Degree centrality"}
+
+# Centrality exercises
+autographr(nodes)
+# Degree Centrality 
+node_degree(nodes, normalized = FALSE)
+
+#
+nodes %>%
+  add_node_attribute("color", node_is_max(node_degree(nodes))) %>%
+  autographr(node_color = "color")
+
+```
+
+```{r, echo=FALSE, fig.cap="Betweenness centrality"}
+# Betweenness Centrality 
+nodes %>%
+  add_node_attribute("color", node_is_max(node_betweenness(nodes))) %>%
+  autographr(node_color = "color")
+
+```
+
+
+```{r, echo=TRUE}
+##community detection walktrap techniques
+
+
+#gnodes <- autographr(nodes) + ggtitle("UK Faculty")
+
+
+#network_components(to_undirected(nodes))
+#nodes <- nodes %>% 
+#  mutate(weak_comp = node_components(to_undirected(nodes)),
+#         strong_comp = node_components(nodes))
+#autographr(nodes, node_color = "weak_comp") + ggtitle("Weak components") +
+#  autographr(nodes, node_color = "strong_comp") + ggtitle("Strong components")
+#(nodes <- to_giant(nodes))
+#(nodes <- to_undirected(nodes))
+#autographr(nodes)
+#nodes_wt <- node_walktrap(nodes, times=50)
+
+
+
+
+network_density(nodes) #0.0125
+network_reciprocity(nodes) #0
+network_transitivity(nodes) #0
+network_components(nodes) #81
+```
+
+```{r, echo=FALSE}
+glimpse(edges)
+skimr::skim(edges)
+```
+
+
+
+
+```{r}
+## rename columns 
+## turn the node and edge tables into a network object
+colnames(edges) <- c('head', 'tail')
+```
+
+```{r, echo=FALSE}
+glimpse(edges)
+skimr::skim(edges)
+summary(edges) 
+```
+
+
+```{r, echo=FALSE}
+edges %>% group_by_all() %>% filter(n()>1) %>% ungroup()
+```
+
+
+
+```{r, echo=FALSE}
+as.network(edges, vertices = nodes)
+as.network(edges)
+```
+
+```{r, echo=FALSE}
+edges[duplicated(edges[,-4]) | duplicated(edges[,-4], fromLast=T),]
+```
+
+
+
+
+
+```{r, echo=TRUE}
+G <-  network(as.network(edges), directed = F, matrix.type='edgelist')
+#G <-  network(edges, directed = F, matrix.type='edgelist')
+```
+
+
+```{r, echo= FALSE}
+G %v% 'dept' = nodes$dept
+G %v% 'degree' = nodes$degree
+```
+
+
+
+```{r, echo=TRUE}
+#model <-  ergm(G ~ edges + nodematch('dept'))
+
+ 
+ model <-  ergm(G ~ edges + nodematch('dept', diff = T))
+```
+
+```{r, echo=TRUE}
+summary(model)
+```
+
+
+
+## Node analysis 
+
+```{r, echo=FALSE}
+glimpse(nodes)
+```
+
+
+```{r, echo=TRUE}
+Model1 <- ergm(G ~ edges + nodematch('dept'),
+               control=control.ergm(MCMC.burnin=1024*75, MCMLE.maxit=40))
+```
+
+```{r, include=FALSE}
+save(Model1, file="/Users/stephanie/Downloads/Model1.Rdata")
+```
+
+
+
+
+
+```{r, echo=TRUE}
+summary(Model1) 
+```
+
+
+```{r, echo=TRUE}
+mod.fit <- gof(Model1, GOF = ~ distance + espartners + idegree + odegree)
+summary(mod.fit)
+
+```
+
+```{r, echo=TRUE}
+par(mfrow=c(2,2))
+plot(mod.fit, main="GOF - Model 1")
+par(mfrow=c(1,1))
+
+```
+
+
+
+```{r, echo=TRUE}
+Model2 <- ergm(G ~ edges + nodematch('dept')
+              
+                 )
+```
+
+
+```{r, echo=TRUE}
+netigraph <- migraph::as_igraph(nodes)
+```
+
+```{r, echo=TRUE}
+# Log-likelihood
+ergm1mle <- model$mle.lik
+
+ergm1mle
+```
+
+
+```{r, echo=TRUE}
+# Coefficients
+coefs1 <- data.frame(unlist(model$coefficients,
+                     exp(model$coefficients) / (1 + exp(model$coefficients)),
+                     migraph::network_density(netigraph)))
+```
+
+
+```{r}
+
+```
+
+```{r, echo=TRUE}
+## Untransformed
+model$coefficients
+```
+
+```{r, echo=TRUE}
+## Transformed
+exp(model$coefficients) / (1 + exp(model$coefficients))
+```
+
+
+```{r, echo=TRUE}
+netnetwork <- migraph::as_network(netigraph)
+```
+
+```{r, echo=TRUE}
+model.sim <- simulate(model)
+par(mfrow = c(1,2)) # This command enables side-by-side comparison.
+plot(netnetwork, main = "Observed")
+plot(model.sim, main = "Simulated")
+par(mfrow = c(1,1))
+```
+```{r}
+model.gof <- gof(model,  GOF = ~ distance + espartners + idegree + odegree)
+par(mfrow = c(2,3))
+plot(model.gof, plotlogodds = T)
+par(mfrow = c(1,1))
+```
+
+
+```{r, echo=TRUE}
+# Model 1
+model_ergm1 <- ergm::ergm(G ~ edges + nodematch("dept"))
+coefs2 <- model_ergm1$coefficients
+```
+
+
+```{r, echo=TRUE}
+# Model 2
+model_ergm2 <- ergm::ergm(G ~ edges + nodematch("dept") +
+                      gwesp(0, fixed = TRUE))
+coefs3 <- model_ergm2$coefficients
+
+```
+
+
+```{r, echo=TRUE}
+# Model 3
+model_ergm3 <- ergm::ergm(G ~ edges + nodematch("dept") +
+                      gwesp(0, fixed = TRUE) )
+coefs4 <- model_ergm3$coefficients
+```
+
+```{r, echo=TRUE}
+mcmc.diagnostics(model_ergm3)
+```
+
+

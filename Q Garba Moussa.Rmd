@@ -1,0 +1,104 @@
+---
+title: "q Garba Moussa"
+author: "Stephanie Flores"
+date: "2022-12-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+#install.packages("remotes")
+#library(remotes)
+#remotes::install_github("snlab-ch/migraph")
+#library(migraph)
+install.packages("igraph", dependencies=TRUE)
+install.packages("igraphdata")
+install.packages("statnet")
+install.packages("dplyr")
+install.packages("ngram")
+
+```
+
+
+
+```{r, include=FALSE}
+library(remotes)
+library(tidyverse)
+library(migraph)
+library(tidygraph)
+library(statnet)
+library(igraphdata)
+library(statnet)
+library(ngram)
+library(dplyr)
+```
+
+Data: The personal friendship network of a faculty of a UK university, consisting of 81 vertices (individuals) and 817 directed and weighted connections. The school affiliation of each individual is stored as a vertex attribute. This data comes from the igraph package.
+```{r, include=FALSE}
+nodes <- load("/Users/stephanie/Downloads/dataset-ukfaculty-2008-subset1-nodes.Rdata")
+nodes <- data 
+
+edges <- load("/Users/stephanie/Downloads/dataset-ukfaculty-2008-subset1-edges.Rdata")
+edges <- data 
+```
+
+In the Nodes dataset, there are 81 rows and 3 columns (attributes are: the ID, department and the degree). We also see that there is data on the dept and the degree.
+```{r, echo=FALSE}
+glimpse(nodes)
+skimr::skim(nodes)
+summary(nodes) 
+```
+
+
+```{r, echo=FALSE, fig.cap="Degree centrality"}
+
+# Centrality exercises
+autographr(nodes)
+# Degree Centrality 
+node_degree(nodes, normalized = FALSE)
+
+#
+nodes %>%
+  add_node_attribute("color", node_is_max(node_degree(nodes))) %>%
+  autographr(node_color = "color")
+
+```
+
+```{r, echo=FALSE, fig.cap="Betweenness centrality"}
+# Betweenness Centrality 
+nodes %>%
+  add_node_attribute("color", node_is_max(node_betweenness(nodes))) %>%
+  autographr(node_color = "color")
+
+```
+
+
+```{r, echo=TRUE}
+##community detection walktrap techniques
+
+
+gnodes <- autographr(nodes) + ggtitle("UK Faculty")
+
+
+network_components(to_undirected(nodes))
+nodes <- nodes %>% 
+  mutate(weak_comp = node_components(to_undirected(nodes)),
+         strong_comp = node_components(nodes))
+autographr(nodes, node_color = "weak_comp") + ggtitle("Weak components") +
+  autographr(nodes, node_color = "strong_comp") + ggtitle("Strong components")
+(nodes <- to_giant(nodes))
+(nodes <- to_undirected(nodes))
+autographr(nodes)
+nodes_wt <- node_walktrap(nodes, times=50)
+
+
+
+
+network_density(nodes) #0.0125
+network_reciprocity(nodes) #0
+network_transitivity(nodes) #0
+network_components(nodes) #81
+```
